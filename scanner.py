@@ -1,6 +1,9 @@
 
+import re 
+
 KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
 SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '/', '=', '<'}
+DOUBLE_SYMBOLS = {'==', '<=', '>='}
 WHITESPACE = {' ','\t','\r','\v','\f'}
 
 
@@ -10,51 +13,67 @@ class Scanner:
         self.filename  = filename 
         self.tokens = []
         self.errors = []
-        self.symoblTable = []
+        self.symoblTable = set()
         self.lineno = 0
+  
 
         with open(filename, encoding='utf-8') as f:
             self.setOfLines = f.readlines()
      
-    def get_next_token(input_program, location):
-        # recognizing SYMBOL
-        ans= is_symbol(input_program[location])
-        if ans:
-            if input_program[location] == '/' and input_program[location + 1] == '*':
-                # comment 
-                return
-            if input_program[location] == '=' and input_program[location+1] == '=':
-                # logical equality
-                return
-            # return the symbol token
-            return 
-        # recognizing NUM
-        loc_dummy = location
-        tk = ''
-        if is_digit(input_program[location]):
-            while is_digit(input_program[loc_dummy]):
-                tk += input_program[loc_dummy]
-                loc_dummy += 1
-            if is_white(input_program[loc_dummy]) or is_symbol(input_program[loc_dummy]) or input_program[loc_dummy] == 'EOF':
-                # means that it is a correct number
-                return 
+    def get_next_token(self, input_program, location):
+        while location < len(input) and input_program[location] in WHITESPACE:
+            location += 1
+
+        if location > len(input_program): 
+            return None, location
+        
+
+        # read first char 
+        ch = input_program[location]
+
+
+        # recognize Command 
+
+
+        # recognizing KEYWORDS and Identifiers
+        if ch.isalpha(): 
+            match = re.match(r'[A-Za-z][A-Za-z0-9]*', input_program[location:])
+            lexeme = match.group()
+
+            if lexeme not in self.symoblTable:
+                self.symoblTable.add(lexeme)
+
+
+            if lexeme in KEYWORDS: 
+                return ('KEYWORD', lexeme), location + len(lexeme)
             else:
-                # means that there's an error
-                return
-            return
-        elif is_letter(input_program[location]):
-            while is_letter(input_program[loc_dummy]) or is_digit(input_program[loc_dummy]):
-                tk += input_program[loc_dummy]
-                loc_dummy += 1
-            if is_keyword(tk):
-                # means that it is a keyword
-                return
+                return ('ID', lexeme), location + len(lexeme)
+            
+            
+
+        # recognizing NUMBER
+        if ch.isdigit(): 
+            match = re.match(r'\d+[A-Za-z]*', input_program[location:])
+            lexeme = match.group()
+
+            if re.fullmatch(lexeme, r'\d+'):
+                return ('NUM', lexeme), location + len(lexeme)
             else:
-                # the word is an ID and not a keyword
-                return
-            return 
-        else:
-            return
+                self.errors.append((self.lineno, lexeme, 'Invalid number'))
+                return None, location + len(lexeme)
+            
+        # recognizing SYMBOL (lookahead approach)
+        if location + 1 < len(input_program) and input_program[location:location+2] in DOUBLE_SYMBOLS:
+            return ('SYMBOL', input_program[location:location+2]), location + 2
+
+        if ch in SYMBOLS:
+            return ('SYMBOL', ch), location + 1
+        
+         # Invalid Char
+        self.errors.append((self.lineno, ch, 'Invalid input'))
+        return None, location + 1
+    
+    
         
     def scanning(self): 
         for _, line in enumerate(self.setOfLines): 
@@ -62,7 +81,7 @@ class Scanner:
             lineTokenList = []
             currentIndex = 0
             while currentIndex < len(line): 
-                nextToken, endToken = self.get_next_token
+                nextToken, endToken = self.get_next_token(line, currentIndex)
                 if nextToken: 
                     lineTokenList.append(nextToken)
                 currentIndex = endToken
@@ -90,4 +109,6 @@ class Scanner:
 
 if __name__ == '__main__':
     scanner = Scanner('input.txt')
+    scanner.scanning()
+    scanner.generateOutputs()
 
