@@ -1,13 +1,18 @@
-# scanner
+
+KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
+SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '/', '=', '<'}
+WHITESPACE = {' ','\t','\r','\v','\f'}
+
+
 class Scanner:
     def __init__(self, filename):
-        self.KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
-        self.SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '/', '=', '<'}
+
         self.filename  = filename 
         self.tokens = []
         self.errors = []
         self.symoblTable = []
-        
+        self.lineno = 0
+
         with open(filename, encoding='utf-8') as f:
             self.setOfLines = f.readlines()
      
@@ -50,7 +55,20 @@ class Scanner:
             return 
         else:
             return
-    
+        
+    def scanning(self): 
+        for _, line in enumerate(self.setOfLines): 
+            self.lineno += 1
+            lineTokenList = []
+            currentIndex = 0
+            while currentIndex < len(line): 
+                nextToken, endToken = self.get_next_token
+                if nextToken: 
+                    lineTokenList.append(nextToken)
+                currentIndex = endToken
+            if lineTokenList:
+                self.tokens.append(self.lineno, lineTokenList)
+
     def generateOutputs(self): 
         with open('token.txt', 'w', encoding='utf-8') as f: 
             for lineno, tokenPair in self.tokens:
