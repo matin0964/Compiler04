@@ -14,6 +14,7 @@ class Scanner:
         self.tokens = []
         self.errors = []
         self.symoblTable = set()
+        self.symoblTable.update(KEYWORDS)
         self.lineno = 0
   
 
@@ -96,7 +97,7 @@ class Scanner:
     def generateOutputs(self): 
         with open('token.txt', 'w', encoding='utf-8') as f: 
             for lineno, tokenPair in self.tokens:
-                lineToken = f"{lineno}\t" + ' '.join(f"({type}, {value})" for type, value in tokenPair)
+                lineToken = f"{lineno}.\t" + ' '.join(f"({type}, {value})" for type, value in tokenPair)
                 f.write(lineToken + '\n')
 
         with open('lexical_errors.txt', 'w', encoding='utf-8') as f:
@@ -104,7 +105,7 @@ class Scanner:
                 f.write('There is no lexical error.\n')
             else:
                 for lineno, errorCode, errorType in self.errors:
-                    f.write(f"{lineno}\t({errorCode}, {errorType})\n")
+                    f.write(f"{lineno}.\t({errorCode}, {errorType})\n")
 
 
         with open('symbol_table.txt', 'w', encoding='utf-8') as f:
