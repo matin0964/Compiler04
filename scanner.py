@@ -34,6 +34,26 @@ class Scanner:
 
 
         # recognize Command 
+        comment = False
+        dummy_loc = location + 2
+        comment_txt = ''
+        if ch == '/':
+            if input_program[location+1] == '*':
+                # comment started
+                comment = True
+            while comment:
+                if dummy_loc == len(input_program):
+                    # the comment is not closed
+                    self.errors.append((self.lineno, ch, 'Unmatched comment'))
+                    return 
+                elif input_program[dummy_loc] == '*' and input_program[dummy_loc + 1] == '/':
+                    comment = False
+                    return None, dummy_loc+2
+                else:
+                    comment_txt += input_program[dummy_loc]
+                    dummy_loc += 1
+                
+                
 
 
         # recognizing KEYWORDS and Identifiers
