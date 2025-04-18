@@ -2,7 +2,7 @@
 import re 
 
 KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
-SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<', '>'}
+SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<'}
 WHITESPACE = {' ','\t','\r','\v','\f'}
 
 
@@ -37,6 +37,7 @@ class Scanner:
         ('ID', 'DIGIT'): 'ID',
         ('ID', 'OTHER'): 'INV_IN',
         ('NUM', 'DIGIT'): 'NUM',
+        ('NUM', 'OTHER'): 'INV_NUM',
         ('NUM', 'LETTER'): 'INV_NUM',
         }
         
