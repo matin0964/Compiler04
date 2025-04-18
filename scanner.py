@@ -14,7 +14,7 @@ class Scanner:
         self.errors = []
         self.symbolTable = set()
         self.symbolTable.update(KEYWORDS)
-        self.lineno = 0
+        self.lineno = 1
         self.initialize_DFA() 
 
         with open(filename, encoding='utf-8') as f:
@@ -84,11 +84,14 @@ class Scanner:
 
         state = 'START'
         lexeme = ''
-
+   
         while location < len(self.inputProgram):
             # comment handeling
             if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '/' and self.inputProgram[location + 1] == '*':
+                lineNumber = self.lineno
                 comment = ''
+                if lexeme != '': break
+                reserveLineno = self.lineno
                 while(True):
                     if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
                         break
@@ -96,15 +99,17 @@ class Scanner:
                         if location + 1 == len(self.inputProgram): 
                             if len(comment) > 7:  
                                 comment = f'{comment[:7]}...'
-                            self.errors.append((self.lineno + 1,  comment, 'Unclosed comment'))
+                            self.errors.append((lineNumber,  comment, 'Unclosed comment'))
                             return None, location + 1
                     comment += self.inputProgram[location]
+                    if (self.inputProgram[location] == '\n'): 
+                        self.lineno += 1
                     location += 1
                 location += 2
                 break
 
             elif (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
-                self.errors.append((self.lineno + 1, '*/', 'Unmatched comment'))
+                self.errors.append((self.lineno, '*/', 'Unmatched comment'))
                 location += 2
                 break
 
@@ -130,11 +135,11 @@ class Scanner:
                     self.symbolTable.add(lexeme)
 
             if (tokenType == 'INV_IN'): 
-                self.errors.append((self.lineno + 1, lexeme, 'Invalid input'))
+                self.errors.append((self.lineno, lexeme, 'Invalid input'))
                 return None, location 
             
             if (tokenType == 'INV_NUM'):
-                self.errors.append((self.lineno + 1, lexeme, 'Invalid number'))
+                self.errors.append((self.lineno, lexeme, 'Invalid number'))
                 return None, location 
             
             return (tokenType, lexeme), location
@@ -144,27 +149,28 @@ class Scanner:
 
      
     def scanning(self): 
-        tempLineno = 0
         currentIndex = 0
         while(currentIndex < len(self.inputProgram)):
-            lineTokenList = []
-            while(self.lineno == tempLineno and currentIndex <  len(self.inputProgram)): 
+            while(currentIndex <  len(self.inputProgram)): 
                 nextToken, endToken = self.get_next_token(currentIndex)
                 if nextToken: 
-                    lineTokenList.append(nextToken)
+                    self.tokens.append((self.lineno, nextToken))
                 currentIndex = endToken
-            tempLineno += 1
-            if lineTokenList:
-                self.tokens.append((tempLineno, lineTokenList))
-    
     
         
   
     def generateOutputs(self): 
-        with open('tokens.txt', 'w', encoding='utf-8') as f: 
+        with open('tokens.txt', 'w', encoding='utf-8') as f:          
+            token_dict = {}
             for lineno, tokenPair in self.tokens:
-                lineToken = f"{lineno}.\t" + ' '.join(f"({type}, {value})" for type, value in tokenPair)
-                f.write(lineToken + '\n')
+                if lineno not in token_dict:
+                        token_dict[lineno] = []
+                token_dict[lineno].append(tokenPair)
+                 
+            for lineno in sorted(token_dict.keys()):
+                token_line = f"{lineno}.\t" + ' '.join((f"({type}, {value})" for type, value in token_dict[lineno]))
+                f.write(token_line + '\n')
+
 
         with open('lexical_errors.txt', 'w', encoding='utf-8') as f:
             if not self.errors:
