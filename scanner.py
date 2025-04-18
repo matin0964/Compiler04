@@ -13,8 +13,8 @@ class Scanner:
         self.filename  = filename 
         self.tokens = []
         self.errors = []
-        self.symoblTable = set()
-        self.symoblTable.update(KEYWORDS)
+        self.symbolTable = set()
+        self.symbolTable.update(KEYWORDS)
         self.lineno = 0
   
 
@@ -25,7 +25,7 @@ class Scanner:
         while location < len(input_program) and input_program[location] in WHITESPACE:
             location += 1
 
-        if location > len(input_program): 
+        if location >= len(input_program): 
             return None, location
         
 
@@ -61,8 +61,8 @@ class Scanner:
             match = re.match(r'[A-Za-z][A-Za-z0-9]*', input_program[location:])
             lexeme = match.group()
 
-            if lexeme not in self.symoblTable:
-                self.symoblTable.add(lexeme)
+            if lexeme not in self.symbolTable:
+                self.symbolTable.add(lexeme)
 
 
             if lexeme in KEYWORDS: 
@@ -71,10 +71,9 @@ class Scanner:
                 return ('ID', lexeme), location + len(lexeme)
             
             
-
         # recognizing NUMBER
         if ch.isdigit(): 
-            match = re.match(r'\d+[A-Za-z]*', input_program[location:])
+            match = re.match(r'\d+[A-Za-z]?', input_program[location:])
             lexeme = match.group()
 
             if re.fullmatch(r'\d+', lexeme):
@@ -101,7 +100,6 @@ class Scanner:
     
         
     def scanning(self): 
-        tempLineno = self.lineno
         for _, line in enumerate(self.setOfLines): 
             self.lineno += 1
             lineTokenList = []
@@ -115,7 +113,7 @@ class Scanner:
                 self.tokens.append((self.lineno, lineTokenList))
 
     def generateOutputs(self): 
-        with open('token.txt', 'w', encoding='utf-8') as f: 
+        with open('tokens.txt', 'w', encoding='utf-8') as f: 
             for lineno, tokenPair in self.tokens:
                 lineToken = f"{lineno}.\t" + ' '.join(f"({type}, {value})" for type, value in tokenPair)
                 f.write(lineToken + '\n')
@@ -124,12 +122,18 @@ class Scanner:
             if not self.errors:
                 f.write('There is no lexical error.\n')
             else:
+                error_dict = {}
                 for lineno, errorCode, errorType in self.errors:
-                    f.write(f"{lineno}.\t({errorCode}, {errorType})\n")
-
+                    if lineno not in error_dict:
+                        error_dict[lineno] = []
+                    error_dict[lineno].append(f"({errorCode}, {errorType})")
+            
+                for lineno in sorted(error_dict.keys()):
+                    error_line = f"{lineno}.\t" + ' '.join(error_dict[lineno])
+                    f.write(error_line + '\n')
 
         with open('symbol_table.txt', 'w', encoding='utf-8') as f:
-            for no, lexeme in enumerate(self.symoblTable, 1):
+            for no, lexeme in enumerate(self.symbolTable, 1):
                 f.write(f"{no}.\t{lexeme}\n")
 
 
