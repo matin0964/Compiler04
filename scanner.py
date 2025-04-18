@@ -36,6 +36,7 @@ class Scanner:
         ('ID', 'LETTER'): 'ID',
         ('ID', 'DIGIT'): 'ID',
         ('ID', 'OTHER'): 'INV_IN',
+        ('NUM', 'OTHER'): 'INV_IN',
         ('NUM', 'DIGIT'): 'NUM',
         ('NUM', 'LETTER'): 'INV_NUM',
         }
