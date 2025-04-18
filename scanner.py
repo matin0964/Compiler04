@@ -1,3 +1,4 @@
+
 KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
 SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<'}
 WHITESPACE = {' ','\t','\r','\v','\f'}
