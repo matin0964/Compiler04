@@ -1,3 +1,5 @@
+# Kian Ghassemi 401102264
+# Matin Mohammadi 401110329
 
 KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
 SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<'}
@@ -31,6 +33,7 @@ class Scanner:
         ('SYMBOL/', 'OTHER'): 'INV_IN',  
         ('START', 'OTHER'): 'INV_IN',
         ('ASSIGN_OR_EQ', '='): 'EQ',
+        ('ASSIGN_OR_EQ', 'OTHER'): 'INV_IN',
         ('ID', 'LETTER'): 'ID',
         ('ID', 'DIGIT'): 'ID',
         ('ID', 'OTHER'): 'INV_IN',
