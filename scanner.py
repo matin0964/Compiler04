@@ -2,8 +2,7 @@
 import re 
 
 KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
-SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '/', '=', '<'}
-DOUBLE_SYMBOLS = {'==', '<=', '>='}
+SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<', '>'}
 WHITESPACE = {' ','\t','\r','\v','\f'}
 
 
@@ -16,102 +15,151 @@ class Scanner:
         self.symbolTable = set()
         self.symbolTable.update(KEYWORDS)
         self.lineno = 0
-  
+        self.initialize_DFA() 
 
         with open(filename, encoding='utf-8') as f:
-            self.setOfLines = f.readlines()
+            self.inputProgram = f.read()
+
+
+    def initialize_DFA(self):
+        self.TRANSITIONS = {
+        ('START', 'LETTER'): 'ID',
+        ('START', 'DIGIT'): 'NUM',
+        ('START', '='): 'ASSIGN_OR_EQ',
+        ('START', 'SYMBOL' ): 'SYMBOL',  
+        ('START', '/' ): 'SYMBOL/',    
+        ('START', '*' ): 'SYMBOL*',    
+        ('SYMBOL*', 'OTHER'): 'INV_IN',  
+        ('SYMBOL/', 'OTHER'): 'INV_IN',  
+        ('START', 'OTHER'): 'INV_IN',
+        ('ASSIGN_OR_EQ', '='): 'EQ',
+        ('ID', 'LETTER'): 'ID',
+        ('ID', 'DIGIT'): 'ID',
+        ('ID', 'OTHER'): 'INV_IN',
+        ('NUM', 'DIGIT'): 'NUM',
+        ('NUM', 'LETTER'): 'INV_NUM',
+        }
+        
+        self.FINAL_STATES = {
+        'ID': 'ID',
+        'NUM': 'NUM',
+        'EQ': 'SYMBOL',
+        'ASSIGN_OR_EQ': 'SYMBOL',
+        'SYMBOL': 'SYMBOL',
+        'INV_IN': 'INV_IN',
+        'INV_NUM': 'INV_NUM',
+        'SYMBOL*': 'SYMBOL',
+        'SYMBOL/': 'SYMBOL',
+
+    }
+
+
+    def char_classification(self, ch):
+        if ch.isalpha(): return 'LETTER'
+        elif ch.isdigit(): return 'DIGIT'
+        elif ch in SYMBOLS: return 'SYMBOL'  # Use char itself for symbols
+        elif ch in WHITESPACE: return 'WHITESPACE'
+        elif ch in '=/*': return ch 
+        elif ch == '\n': 'NEWLINE'
+        else: return 'OTHER'
+
+
+
      
-    def get_next_token(self, input_program, location):
-        while location < len(input_program) and input_program[location] in WHITESPACE:
+
+    def get_next_token(self, location):
+        while location < len(self.inputProgram) and self.inputProgram[location] in WHITESPACE:
             location += 1
 
-        if location >= len(input_program): 
+        if location >= len(self.inputProgram): 
             return None, location
         
 
         # read first char 
-        ch = input_program[location]
+        ch = self.inputProgram[location]
 
-
-        # recognize Command 
-        comment = False
-        dummy_loc = location + 2
-        comment_txt = ''
-        if ch == '/':
-            if input_program[location+1] == '*':
-                # comment started
-                comment = True
-            while comment:
-                if dummy_loc == len(input_program):
-                    # the comment is not closed
-                    self.errors.append((self.lineno, ch, 'Unmatched comment'))
-                    return 
-                elif input_program[dummy_loc] == '*' and input_program[dummy_loc + 1] == '/':
-                    comment = False
-                    return None, dummy_loc+2
-                else:
-                    comment_txt += input_program[dummy_loc]
-                    dummy_loc += 1
-                
-                
-
-
-        # recognizing KEYWORDS and Identifiers
-        if ch.isalpha(): 
-            match = re.match(r'[A-Za-z][A-Za-z0-9]*', input_program[location:])
-            lexeme = match.group()
-
-            if lexeme not in self.symbolTable:
-                self.symbolTable.add(lexeme)
-
-
-            if lexeme in KEYWORDS: 
-                return ('KEYWORD', lexeme), location + len(lexeme)
-            else:
-                return ('ID', lexeme), location + len(lexeme)
-            
-            
-        # recognizing NUMBER
-        if ch.isdigit(): 
-            match = re.match(r'\d+[A-Za-z]?', input_program[location:])
-            lexeme = match.group()
-
-            if re.fullmatch(r'\d+', lexeme):
-                return ('NUM', lexeme), location + len(lexeme)
-            else:
-                self.errors.append((self.lineno, lexeme, 'Invalid number'))
-                return None, location + len(lexeme)
-            
-        # recognizing SYMBOL (lookahead approach)
-        if location + 1 < len(input_program) and input_program[location:location+2] in DOUBLE_SYMBOLS:
-            return ('SYMBOL', input_program[location:location+2]), location + 2
-
-        if ch in SYMBOLS:
-            return ('SYMBOL', ch), location + 1
-        
-         # Invalid Char
         if ch == '\n': 
-            # self.lineno += 1
-            return None, location + 1
-        
-        self.errors.append((self.lineno, ch, 'Invalid input'))
-        return None, location + 1
-    
-    
-        
-    def scanning(self): 
-        for _, line in enumerate(self.setOfLines): 
             self.lineno += 1
+            return None, location + 1
+
+        state = 'START'
+        lexeme = ''
+
+        while location < len(self.inputProgram):
+            # comment handeling
+            if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '/' and self.inputProgram[location + 1] == '*':
+                comment = ''
+                while(True):
+                    if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
+                        break
+                    else:
+                        if location + 1 == len(self.inputProgram): 
+                            if len(comment) > 7:  
+                                comment = f'{comment[:7]}...'
+                            self.errors.append((self.lineno + 1,  comment, 'Unclosed comment'))
+                            return None, location + 1
+                    comment += self.inputProgram[location]
+                    location += 1
+                location += 2
+                break
+
+            elif (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
+                self.errors.append((self.lineno + 1, '*/', 'Unmatched comment'))
+                location += 2
+                break
+
+
+            cls = self.char_classification(self.inputProgram[location])
+
+            if cls == 'NEWLINE':
+            #    location += 1
+                break
+            nextState = self.TRANSITIONS.get((state, cls))
+            if nextState is None:
+                break
+            state = nextState
+            lexeme += self.inputProgram[location]
+            location += 1
+
+        if state in self.FINAL_STATES:
+            tokenType = self.FINAL_STATES[state]
+            if lexeme in KEYWORDS:
+                tokenType = 'KEYWORD'
+            if tokenType == 'ID':
+                 if lexeme not in self.symbolTable:
+                    self.symbolTable.add(lexeme)
+
+            if (tokenType == 'INV_IN'): 
+                self.errors.append((self.lineno + 1, lexeme, 'Invalid input'))
+                return None, location 
+            
+            if (tokenType == 'INV_NUM'):
+                self.errors.append((self.lineno + 1, lexeme, 'Invalid number'))
+                return None, location 
+            
+            return (tokenType, lexeme), location
+        else:
+            return None, location 
+
+
+     
+    def scanning(self): 
+        tempLineno = 0
+        currentIndex = 0
+        while(currentIndex < len(self.inputProgram)):
             lineTokenList = []
-            currentIndex = 0
-            while currentIndex < len(line): 
-                nextToken, endToken = self.get_next_token(line, currentIndex)
+            while(self.lineno == tempLineno and currentIndex <  len(self.inputProgram)): 
+                nextToken, endToken = self.get_next_token(currentIndex)
                 if nextToken: 
                     lineTokenList.append(nextToken)
                 currentIndex = endToken
+            tempLineno += 1
             if lineTokenList:
-                self.tokens.append((self.lineno, lineTokenList))
-
+                self.tokens.append((tempLineno, lineTokenList))
+    
+    
+        
+  
     def generateOutputs(self): 
         with open('tokens.txt', 'w', encoding='utf-8') as f: 
             for lineno, tokenPair in self.tokens:
