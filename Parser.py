@@ -75,7 +75,7 @@ class Scanner:
             location += 1
 
         if location >= len(self.inputProgram): 
-            return ("DOLLOR", "$"), location + 1
+            return ("$", "$"), location + 1
         
 
         # read first char 
@@ -323,27 +323,55 @@ class Parser:
         self.parse_tree = []
         self.tree_depth = 0
         self.Frist_set = {}
+        self.Follow_set = {}
         self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID"})
         print(self.terminals)
         self.current_state = ("Program", 0)
-        self.tokenList = ["Program"] # stack for tokens of Input
-        
+        self.stateList = [self.current_state] # stack for tokens of Input
+        self.add_tree_node("Program")
         
 
     def getTokens(self): 
         currentIndex = 0
-        while(currentIndex <= len(self.scanner.inputProgram)):
+        nextToken = None
+        while(nextToken[1] != "$"):
                 nextToken, endToken = self.scanner.get_next_token(currentIndex)
                 if nextToken: 
-                    print(nextToken)
+                    check_token = nextToken[0]
+                    if check_token == "SYMBOL" or check_token == "KEYWORD": 
+                        check_token = nextToken[1]
+
+                    state = None
+                    while not state in self.terminals: 
+                     state, number = self.call(check_token)
+                     self.stateList.append((state, number))
+                     self.current_state = self.stateList[-1]
+                     self.tree_depth += 1 
+                     self.add_tree_node(state)
+                    
+                    if self.match(state, check_token): 
+                        while(self.stateList[-1][1] == 1): # final state of diagram
+                            self.stateList.pop()
+                            self.tree_depth -= 1 
+
+                    self.current_state = self.stateList[-1]
                 currentIndex = endToken
 
-    def decide_path(self, input_token): 
+    def match(self, token, state): 
+        if token == state: return True
+        else: return False
+
+
+    def call(self, input_token): 
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
-            if input_token in self.Frist_set[key]:
-                return (key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key])
+            if key in self.terminals and input_token == key: 
+                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+            elif key != "EPSILON" and  input_token in self.Frist_set[key]  :
+                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+            elif key == "EPSILON" and input_token in self.Follow_set[self.current_state[0]]:
+                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
         
-        return (None, None )
+        return None, None
     
     def add_tree_node(self, node):
         self.parse_tree.append('\t' * self.depth + node)
