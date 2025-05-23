@@ -4,11 +4,9 @@
 
 class Scanner:
     def __init__(self, filename):
-
         self.KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
         self.SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<'}
         self.WHITESPACE = {' ','\t','\r','\v','\f'}
-
         self.filename  = filename 
         self.tokens = []
         self.errors = []
@@ -75,7 +73,7 @@ class Scanner:
             location += 1
 
         if location >= len(self.inputProgram): 
-            return ("$", "$"), location + 1
+            return ("$", "$"), location
         
 
         # read first char 
@@ -88,16 +86,15 @@ class Scanner:
         state = 'START'
         lexeme = ''
    
-        while location <= len(self.inputProgram):
-
-            if location >= len(self.inputProgram): 
-                return ("DOLLOR", "$"), location + 1
+        while location < len(self.inputProgram):
+          
         
             # comment handeling
             if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '/' and self.inputProgram[location + 1] == '*':
                 lineNumber = self.lineno
                 comment = ''
                 if lexeme != '': break
+                reserveLineno = self.lineno
                 while(True):
                     if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
                         break
@@ -152,6 +149,16 @@ class Scanner:
         else:
             return None, location 
 
+
+     
+    def scanning(self): 
+        currentIndex = 0
+        while(currentIndex < len(self.inputProgram)):
+            # while(currentIndex <  len(self.inputProgram)): 
+                nextToken, endToken = self.get_next_token(currentIndex)
+                if nextToken: 
+                    self.tokens.append((self.lineno, nextToken))
+                currentIndex = endToken
     
         
   
@@ -185,7 +192,6 @@ class Scanner:
         with open('symbol_table.txt', 'w', encoding='utf-8') as f:
             for no, lexeme in enumerate(self.symbolTable, 1):
                 f.write(f"{no}.\t{lexeme}\n")
-
 
 
 
@@ -322,10 +328,106 @@ class Parser:
         self.syntaxErrors = []
         self.parse_tree = []
         self.tree_depth = 0
-        self.Frist_set = {}
-        self.Follow_set = {}
-        self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID"})
-        print(self.terminals)
+        self.Frist_set = first_sets = {
+        "Program": ["int", "void", "EPSILON"],
+        "DeclarationList": ["int", "void", "EPSILON"],
+        "Declaration": ["int", "void"],
+        "DeclarationInitial": ["int", "void"],
+        "DeclarationPrime": [";", "[", "(",],
+        "VarDeclarationPrime": [";", "["],
+        "FunDeclarationPrime": ["("],
+        "TypeSpecifier": ["int", "void"],
+        "Params": ["int", "void"],
+        "ParamList": [",", "EPSILON"],
+        "Param": ["int", "void"],
+        "ParamPrime": ["[", "EPSILON"],
+        "CompoundStmt": ["{"],
+        "StatementList": ["ID", ";", "NUM", "(", "{", "break", "if", "while", "return", "+", "-", "EPSILON"],
+        "Statement": ["ID", ";", "NUM", "(", "{", "break", "if", "while", "return", "+", "-"],
+        "ExpressionStmt": ["ID", ";", "NUM", "(", "break", "+", "-"],
+        "SelectionStmt": ["if"],
+        "IterationStmt": ["while"],
+        "ReturnStmt": ["return"],
+        "ReturnStmtPrime": ["ID", ";", "NUM", "(", "+", "-"],
+        "Expression": ["ID", "NUM", "(", "+", "-"],
+        "B": ["[", "(", "==" ,"=", "+", "-", "<", "*", "EPSILON"],
+        "H": ["=", "*", "+", "-", "<", "==", "EPSILON"],
+        "SimpleExpressionZegond": ["NUM", "(", "+", "-"],
+        "SimpleExpressionPrime": ["(", "+", "-", "<", "==", "EPSILON", "*"],
+        "C": ["<", "==", "EPSILON"],
+        "Relop": ["<", "=="],
+        "AdditiveExpression": ["ID", "NUM", "(", "+", "-"],
+        "AdditiveExpressionPrime": ["(", "+", "-", "*", "EPSILON"],
+        "AdditiveExpressionZegond": ["NUM", "(", "+", "-"],
+        "D": ["+", "-", "EPSILON"],
+        "Addop": ["+", "-"],
+        "Term": ["ID", "NUM", "(", "+", "-"],
+        "TermPrime": ["(", "*", "EPSILON"],
+        "TermZegond": ["NUM", "(", "+", "-"],
+        "G": ["*", "EPSILON"],
+        "SignedFactor": ["ID", "NUM", "(", "+", "-"],
+        "SignedFactorPrime": ["(", "EPSILON"],
+        "SignedFactorZegond": ["NUM", "(", "+", "-"],
+        "Factor": ["ID", "NUM", "("],
+        "VarCallPrime": ["(", "[", "EPSILON"],
+        "VarPrime": ["[", "EPSILON"],
+        "FactorPrime": ["(", "EPSILON"],
+        "FactorZegond": ["NUM", "("],
+        "Args": ["ID", "NUM", "(", "+", "-", "EPSILON"],
+        "ArgList": ["ID", "NUM", "(", "+", "-"],
+        "ArgListPrime": [",", "EPSILON"]
+        }
+
+        self.Follow_set = {
+            "Program": ["$"],
+            "DeclarationList": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "while", "return", "+", "-"],
+            "Declaration": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "while", "return", "+", "-", "int", "void"],
+            "DeclarationInitial": ["[", "NUM", "]", "(", ")", "int", "void", ","],
+            "DeclarationPrime": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "while", "return", "+", "-", "int", "void"],
+            "VarDeclarationPrime": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "while", "return", "+", "-", "int", "void"],
+            "FunDeclarationPrime": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "while", "return", "+", "-", "int", "void"],
+            "TypeSpecifier": ["ID"],
+            "Params": ["void"],
+            "ParamList": ["void"],
+            "Param": ["void", ","],
+            "ParamPrime": ["void", ","],
+            "CompoundStmt": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "else", "while", "return", "+", "-"],
+            "StatementList": ["else"],
+            "Statement": ["ID", ";", "NUM", "(", ")", "{", "break", "if", "else", "while", "return", "+", "-"],
+            "ExpressionStmt": ["ID", ";", "NUM", "(", ")", "break", "if", "else", "while", "return", "+", "-"],
+            "SelectionStmt": ["ID", ";", "NUM", "(", ")", "break", "if", "else", "while", "return", "+", "-"],
+            "IterationStmt": ["ID", ";", "NUM", "(", ")", "break", "if", "else", "while", "return", "+", "-"],
+            "ReturnStmt": ["ID", ";", "NUM", "(", ")", "break", "if", "else", "while", "return", "+", "-"],
+            "ReturnStmtPrime": ["ID", ";", "NUM", "(", ")", "break", "if", "else", "while", "return", "+", "-"],
+            "Expression": [";"],
+            "B": [";"],
+            "H": [";"],
+            "SimpleExpressionZegond": [";"],
+            "SimpleExpressionPrime": [";"],
+            "C": [";"],
+            "Relop": ["ID", "+", "-"],
+            "AdditiveExpression": [";"],
+            "AdditiveExpressionPrime": [";", "+", "-"],
+            "AdditiveExpressionZegond": [";", "+", "-"],
+            "D": [";", "+", "-"],
+            "Addop": ["ID", "+"],
+            "Term": [";", "+", "-", "*"],
+            "TermPrime": [";", "+", "-", "*"],
+            "TermZegond": [";", "+", "-", "*"],
+            "G": [";", "+", "-", "*"],
+            "SignedFactor": [";", "+", "-", "*", "ID"],
+            "SignedFactorPrime": [";", "+", "-", "*", "ID"],
+            "SignedFactorZegond": [";", "+", "-", "*", "ID"],
+            "Factor": [";", "+", "-", "*", "ID"],
+            "VarCallPrime": [";", "+", "-", "*", "ID"],
+            "VarPrime": [";", "+", "-", "*", "ID"],
+            "FactorPrime": [";", "+", "-", "*", "ID"],
+            "FactorZegond": [";", "+", "-", "*", "ID"],
+            "Args": ["("],
+            "ArgList": ["("],
+            "ArgListPrime": ["("]
+        }
+        self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID", "=", "==", "*"})
         self.current_state = ("Program", 0)
         self.stateList = [self.current_state] # stack for tokens of Input
         self.add_tree_node("Program")
@@ -333,8 +435,8 @@ class Parser:
 
     def getTokens(self): 
         currentIndex = 0
-        nextToken = None
-        while(nextToken[1] != "$"):
+        nextToken = (None, None)
+        while(nextToken[0] != "$"):
                 nextToken, endToken = self.scanner.get_next_token(currentIndex)
                 if nextToken: 
                     check_token = nextToken[0]
@@ -343,19 +445,36 @@ class Parser:
 
                     state = None
                     while not state in self.terminals: 
+                     
                      state, number = self.call(check_token)
-                     self.stateList.append((state, number))
+                     self.stateList.pop()
+                     self.stateList.append((self.current_state[0], number))
+                     if state in self.terminals:
+                         break
+                     if state != "epsilon":
+                         self.tree_depth += 1 
+                         self.stateList.append((state, 0))
+
+                     while(self.stateList[-1][1] == 1): # final state of diagram
+                            self.stateList.pop()
+                            self.tree_depth -= 1
+                            if len(self.stateList) == 0: return 
+
                      self.current_state = self.stateList[-1]
-                     self.tree_depth += 1 
                      self.add_tree_node(state)
                     
                     if self.match(state, check_token): 
+
                         while(self.stateList[-1][1] == 1): # final state of diagram
+                            self.add_tree_node(state)
                             self.stateList.pop()
-                            self.tree_depth -= 1 
+                            self.tree_depth -= 1
+                            if len(self.stateList) == 0: return  
 
                     self.current_state = self.stateList[-1]
+                else: nextToken = (None, None)
                 currentIndex = endToken
+                
 
     def match(self, token, state): 
         if token == state: return True
@@ -363,18 +482,45 @@ class Parser:
 
 
     def call(self, input_token): 
+        # print(self.stateList)
+        # print(input_token)
+        if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
+            next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
+            return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
+        
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
-            if key in self.terminals and input_token == key: 
+            # if (not key in self.terminals) and key != "epsilon": 
+            #      print(key, self.Frist_set[key])
+
+            if key in self.terminals:
+                if input_token == key: 
+                    return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+            elif key != "epsilon" and  input_token in self.Frist_set[key] :
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            elif key != "EPSILON" and  input_token in self.Frist_set[key]  :
-                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            elif key == "EPSILON" and input_token in self.Follow_set[self.current_state[0]]:
+            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]]:
                  return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+            
+
+
+
+        if "epsilon" in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys():
+            return "epsilon",  self.state_machine[self.current_state[0]][self.current_state[1]].transitions["epsilon"]
+
+        for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
+            if (not key in self.terminals) and "EPSILON" in self.Frist_set[key]:
+                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
         
         return None, None
     
     def add_tree_node(self, node):
-        self.parse_tree.append('\t' * self.depth + node)
+        self.parse_tree.append('\t' * self.tree_depth + node)
+
+    def write_outputs(self):
+        with open('parse_tree.txt', 'w') as f:
+            for line in self.parse_tree:
+                f.write(line + '\n')
 
 parser = Parser("input.txt")
-# parser.getTokens()
+# print(parser.Frist_set[parser.state_machine["CompoundStmt"][4][0]])
+parser.getTokens()
+parser.write_outputs()
