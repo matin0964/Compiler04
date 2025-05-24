@@ -492,7 +492,18 @@ class Parser:
     def match(self, token, state): 
         if token == state: return True
         else: return False
-
+    
+    def recover(self, state, token):
+        b = self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()[0]
+        if not token in self.Follow_set[state]:
+            error_msg = f'Illegal {token} found on line {self.lineno}'
+            error_code = 1
+        elif token in self.Follow_set[state]:
+            error_msg = f'Missing {token} on line {self.lineno}'
+            error_code = 2
+        elif token != b:
+            error_msg = f'Missing {b} on line {self.lineno}'
+            error_code = 3
 
     def call(self, input_token): 
         # print(self.stateList)
