@@ -507,14 +507,17 @@ class Parser:
                 if input_token == key: 
                     return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
             elif key != "epsilon" and  (input_token in self.Frist_set[key] or
-                                         (input_token in self.Follow_set[key] and 
+                                         (input_token in self.Follow_set[self.current_state[0]] and 
                                                                                "EPSILON" in self.Frist_set[key])) :
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            elif key == "epsilon":
-                epsilonKey = "epsilon"
+            
+            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]] :
+                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key] 
+            # elif key == "epsilon":
+            #     epsilonKey = "epsilon"
                  
-        if epsilonKey != None:      
-            return epsilonKey,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[epsilonKey]
+        # if epsilonKey != None:      
+        #     return epsilonKey,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[epsilonKey]
         
         return None, None
     
