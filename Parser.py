@@ -448,65 +448,101 @@ class Parser:
                     while not state in self.terminals: 
                      
                         state, number = self.call(check_token)
-                        self.stateList.pop()
-                        self.stateList.append((self.current_state[0], number))
+                        print(f'state: {state}')
+                        if state is None: # Did not match anything
+                            print("An error is occured!")
+                            msg, code = self.recover(check_token)
+                            if code == 1:
+                                # case 1
+                                print(f'state list: {self.stateList}')
+                                if len(self.stateList) == 0:
+                                    break
+                                self.stateList.pop()
+                                self.stateList.append((self.current_state[0],0))
+                                break
+                            elif code == 2:
+                                # case 2
+                                print(f'state list: {self.stateList}')
+                                if len(self.stateList) == 0:
+                                    break
+                                self.stateList.pop()
+                                
+                                continue
+                            elif code == 3:
+                                # case 3
+                                b = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
+                                print(b)
+                                self.stateList.pop()
+                                self.stateList.append((self.current_state[0], self.state_machine[self.current_state[number].transitions.keys()][1]))
+                                continue
+                        else:
+                            self.stateList.pop()
+                            self.stateList.append((self.current_state[0], number))
+                            print(f'current state: {self.current_state[0]}')
+                            print(f'state list: {self.stateList}')
+                            if state in self.terminals:
+                                break
+                            
 
-                        if state in self.terminals:
-                            break
+                            self.tree_depth += 1 
+                            self.add_tree_node(state)
+                            if state != "epsilon":
+                                self.stateList.append((state, 0))
+                                
+                            else: 
+                                self.tree_depth -= 1 
+
+
+
+
+                            while(self.stateList[-1][1] == 1): # final state of diagram
+                                    self.stateList.pop()
+                                    self.tree_depth -= 1
+                                    if len(self.stateList) == 0: return 
+
+                            self.current_state = self.stateList[-1]
                         
 
-                        self.tree_depth += 1 
-                        self.add_tree_node(state)
-                        if state != "epsilon":
-                            self.stateList.append((state, 0))
-                            
-                        else: 
-                            self.tree_depth -= 1 
+                        if self.match(state, check_token): 
+                            self.tree_depth += 1
+                            self.add_tree_node(state)
+                            self.tree_depth -= 1
 
-
-
-
-                        while(self.stateList[-1][1] == 1): # final state of diagram
+                            while(self.stateList[-1][1] == 1): # final state of diagram
                                 self.stateList.pop()
                                 self.tree_depth -= 1
-                                if len(self.stateList) == 0: return 
+                                if len(self.stateList) == 0: return  
 
                         self.current_state = self.stateList[-1]
-                    
-
-                    if self.match(state, check_token): 
-                        self.tree_depth += 1
-                        self.add_tree_node(state)
-                        self.tree_depth -= 1
-
-                        while(self.stateList[-1][1] == 1): # final state of diagram
-                            self.stateList.pop()
-                            self.tree_depth -= 1
-                            if len(self.stateList) == 0: return  
-
-                    self.current_state = self.stateList[-1]
-                else: nextToken = (None, None)
-                currentIndex = endToken
+                    else: nextToken = (None, None)
+                    currentIndex = endToken
                 
 
     def match(self, token, state): 
         if token == state: return True
         else: return False
     
-    def recover(self, state, token):
-        b = self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()[0]
+    def recover(self, token):
+        state = self.current_state[0]
+        print('OH!some error happened!?')
+        print(f'state: {state}, token: {token}')
+        b = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
+        error_msg = ''
+        error_code = 0
+        print(f'state follow set: {self.Follow_set[state]}')
         if not token in self.Follow_set[state]:
-            error_msg = f'Illegal {token} found on line {self.lineno}'
+            error_msg = f'Illegal {token} found on line {self.scanner.lineno}'
             error_code = 1
         elif token in self.Follow_set[state]:
-            error_msg = f'Missing {token} on line {self.lineno}'
+            error_msg = f'Missing {token} on line {self.scanner.lineno}'
             error_code = 2
         elif token != b:
-            error_msg = f'Missing {b} on line {self.lineno}'
+            error_msg = f'Missing {b} on line {self.scanner.lineno}'
             error_code = 3
+        return error_msg,error_code
 
     def call(self, input_token): 
-        # print(self.stateList)
+        print(f'state list: {self.stateList}')
         # print(input_token)
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
             next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
@@ -529,16 +565,17 @@ class Parser:
                  
         # if epsilonKey != None:      
         #     return epsilonKey,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[epsilonKey]
-        
+        print(f"token that goes to fuck: {input_token}")
         return None, None
     
     def add_tree_node(self, node):
         self.parse_tree.append('\t' * self.tree_depth + node)
-
     def write_outputs(self):
         with open('parse_tree.txt', 'w') as f:
             for line in self.parse_tree:
                 f.write(line + '\n')
+
+
 
 parser = Parser("input.txt")
 # print(parser.state_machine["StatementList"][2])
