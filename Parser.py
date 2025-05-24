@@ -444,29 +444,42 @@ class Parser:
                         check_token = nextToken[1]
 
                     state = None
+
                     while not state in self.terminals: 
                      
-                     state, number = self.call(check_token)
-                     self.stateList.pop()
-                     self.stateList.append((self.current_state[0], number))
-                     if state in self.terminals:
-                         break
-                     if state != "epsilon":
-                         self.tree_depth += 1 
-                         self.stateList.append((state, 0))
+                        state, number = self.call(check_token)
+                        self.stateList.pop()
+                        self.stateList.append((self.current_state[0], number))
 
-                     while(self.stateList[-1][1] == 1): # final state of diagram
-                            self.stateList.pop()
-                            self.tree_depth -= 1
-                            if len(self.stateList) == 0: return 
+                        if state in self.terminals:
+                            break
+                        
+                        
+                        self.tree_depth += 1 
+                        self.add_tree_node(state)
+                        if state != "epsilon":
+                            self.stateList.append((state, 0))
+                            
+                        else: 
+                            self.tree_depth -= 1 
 
-                     self.current_state = self.stateList[-1]
-                     self.add_tree_node(state)
-                    
-                    if self.match(state, check_token): 
+
+
 
                         while(self.stateList[-1][1] == 1): # final state of diagram
-                            self.add_tree_node(state)
+                                self.stateList.pop()
+                                self.tree_depth -= 1
+                                if len(self.stateList) == 0: return 
+
+                        self.current_state = self.stateList[-1]
+                    
+
+                    if self.match(state, check_token): 
+                        self.tree_depth += 1
+                        self.add_tree_node(state)
+                        self.tree_depth -= 1
+
+                        while(self.stateList[-1][1] == 1): # final state of diagram
                             self.stateList.pop()
                             self.tree_depth -= 1
                             if len(self.stateList) == 0: return  
@@ -488,27 +501,20 @@ class Parser:
             next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
             return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
         
+        epsilonKey = None
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
-            # if (not key in self.terminals) and key != "epsilon": 
-            #      print(key, self.Frist_set[key])
-
             if key in self.terminals:
                 if input_token == key: 
                     return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            elif key != "epsilon" and  input_token in self.Frist_set[key] :
+            elif key != "epsilon" and  (input_token in self.Frist_set[key] or
+                                         (input_token in self.Follow_set[key] and 
+                                                                               "EPSILON" in self.Frist_set[key])) :
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]]:
-                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            
-
-
-
-        if "epsilon" in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys():
-            return "epsilon",  self.state_machine[self.current_state[0]][self.current_state[1]].transitions["epsilon"]
-
-        for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
-            if (not key in self.terminals) and "EPSILON" in self.Frist_set[key]:
-                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+            elif key == "epsilon":
+                epsilonKey = "epsilon"
+                 
+        if epsilonKey != None:      
+            return epsilonKey,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[epsilonKey]
         
         return None, None
     
@@ -521,6 +527,6 @@ class Parser:
                 f.write(line + '\n')
 
 parser = Parser("input.txt")
-# print(parser.Frist_set[parser.state_machine["CompoundStmt"][4][0]])
+# print(parser.state_machine["StatementList"][2])
 parser.getTokens()
 parser.write_outputs()
