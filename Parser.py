@@ -269,7 +269,7 @@ def build_state_machines_from_string(grammar_str: str) -> dict:
 
 
 
-grammar_string = "Program -> DeclarationList\n\
+grammar_string = "Program -> DeclarationList $\n\
 DeclarationList -> Declaration DeclarationList | EPSILON\n\
 Declaration -> DeclarationInitial DeclarationPrime\n\
 DeclarationInitial -> TypeSpecifier ID\n\
@@ -327,8 +327,9 @@ class Parser:
         self.scanner  = Scanner(filename)
         self.syntaxErrors = []
         self.parse_tree = []
+        self.syntax_erros = []
         self.tree_depth = 0
-        self.Frist_set = first_sets = {
+        self.First_set = first_sets = {
         "Program": ["int", "void", "EPSILON"],
         "DeclarationList": ["int", "void", "EPSILON"],
         "Declaration": ["int", "void"],
@@ -427,7 +428,7 @@ class Parser:
             "ArgList": [")"],
             "ArgListPrime": [")"]
         }
-        self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID", "=", "==", "*"})
+        self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID", "=", "==", "*", "$"})
         self.current_state = ("Program", 0)
         self.stateList = [self.current_state] # stack for tokens of Input
         self.add_tree_node("Program")
@@ -435,87 +436,86 @@ class Parser:
 
     def getTokens(self): 
         currentIndex = 0
+        # daste = 0
         nextToken = (None, None)
-        while(nextToken[0] != "$"):
-                nextToken, endToken = self.scanner.get_next_token(currentIndex)
-                if nextToken: 
-                    check_token = nextToken[0]
-                    if check_token == "SYMBOL" or check_token == "KEYWORD": 
-                        check_token = nextToken[1]
+        while(self.stateList):
+            
+            nextToken, endToken = self.scanner.get_next_token(currentIndex)
+            if nextToken: 
+                
+                print(nextToken, self.stateList)
+                # if nextToken[0] == '$' and daste == 2: return
+                # # if nextToken[0] == '$' and daste == 1: daste += 1
+                # if (nextToken[0] == '$'): daste += 1
 
-                    state = None
 
-                    while not state in self.terminals: 
-                     
-                        state, number = self.call(check_token)
-                        print(f'state: {state}')
-                        if state is None: # Did not match anything
-                            print("An error is occured!")
-                            msg, code = self.recover(check_token)
-                            if code == 1:
-                                # case 1
-                                print(f'state list: {self.stateList}')
-                                if len(self.stateList) == 0:
-                                    break
-                                self.stateList.pop()
-                                self.stateList.append((self.current_state[0],0))
-                                break
-                            elif code == 2:
-                                # case 2
-                                print(f'state list: {self.stateList}')
-                                if len(self.stateList) == 0:
-                                    break
-                                self.stateList.pop()
+                check_token = nextToken[0]
+                if check_token == "SYMBOL" or check_token == "KEYWORD": 
+                    check_token = nextToken[1]
+
+                state = None
+                flag = 0
+                while not state in self.terminals:
+                    flag = 0
+                    state, number = self.call(check_token)
+                    if state is None: # Panic mode NT mode 
+                        flag = self.recover(check_token)
+                        if flag == 1: break  
+                        elif flag == 2: continue
+                        elif flag == 3: break
+                    
+                    else:
+                        if state in self.terminals:
+                            break       
+
+                        self.stateList.pop()
+                        self.stateList.append((self.current_state[0], number))   
+
+                                       
+
+                        self.tree_depth += 1 
+                        self.add_tree_node(state)
+
+                        if state != "epsilon":
+                            self.stateList.append((state, 0))
                                 
-                                continue
-                            elif code == 3:
-                                # case 3
-                                b = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
-                                print(b)
-                                self.stateList.pop()
-                                self.stateList.append((self.current_state[0], self.state_machine[self.current_state[number].transitions.keys()][1]))
-                                continue
-                        else:
-                            self.stateList.pop()
-                            self.stateList.append((self.current_state[0], number))
-                            print(f'current state: {self.current_state[0]}')
-                            print(f'state list: {self.stateList}')
-                            if state in self.terminals:
-                                break
-                            
+                        else: 
+                            self.tree_depth -= 1 
 
-                            self.tree_depth += 1 
-                            self.add_tree_node(state)
-                            if state != "epsilon":
-                                self.stateList.append((state, 0))
-                                
-                            else: 
-                                self.tree_depth -= 1 
-
-
-
-
-                            while(self.stateList[-1][1] == 1): # final state of diagram
-                                    self.stateList.pop()
-                                    self.tree_depth -= 1
-                                    if len(self.stateList) == 0: return 
-
-                            self.current_state = self.stateList[-1]
-                        
-
-                        if self.match(state, check_token): 
-                            self.tree_depth += 1
-                            self.add_tree_node(state)
-                            self.tree_depth -= 1
-
-                            while(self.stateList[-1][1] == 1): # final state of diagram
-                                self.stateList.pop()
-                                self.tree_depth -= 1
-                                if len(self.stateList) == 0: return  
-
+                        self.balanceStateList()
                         self.current_state = self.stateList[-1]
-                    else: nextToken = (None, None)
+                        
+                if flag == 1:
                     currentIndex = endToken
+                    continue  
+                elif flag == 3:
+                    break
+
+                # print("mewo")  
+                # terminal mode
+                if self.match(state, check_token): 
+                    self.stateList.pop()
+                    self.stateList.append((self.current_state[0], number)) 
+                    self.tree_depth += 1
+                    self.add_tree_node(nextToken)
+                    self.tree_depth -= 1
+                    self.balanceStateList()
+
+                else: # Panic mode case 3
+                    next_link = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
+                    self.stateList.pop()  
+                    self.stateList.append((self.current_state[0], 
+                            self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_link]))
+                    self.balanceStateList()
+                    self.syntax_erros.append(f'#{self.scanner.lineno} : syntax error, missing {state}')
+                    if(self.stateList): self.current_state = self.stateList[-1]
+                    continue
+
+
+                if(self.stateList): self.current_state = self.stateList[-1]
+
+            else: nextToken = (None, None)
+            currentIndex = endToken
                 
 
     def match(self, token, state): 
@@ -524,60 +524,83 @@ class Parser:
     
     def recover(self, token):
         state = self.current_state[0]
-        print('OH!some error happened!?')
-        print(f'state: {state}, token: {token}')
-        b = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
-        error_msg = ''
-        error_code = 0
-        print(f'state follow set: {self.Follow_set[state]}')
-        if not token in self.Follow_set[state]:
-            error_msg = f'Illegal {token} found on line {self.scanner.lineno}'
-            error_code = 1
+         # flags:  0 1 -> break 2 -> continue
+        if not token in self.Follow_set[state] and token != '$':
+            # print(token)
+        # if not token in self.Follow_set[state]:        
+            self.stateList.pop()
+            self.stateList.append((self.current_state[0],0))
+            self.current_state = self.stateList[-1]
+            self.syntax_erros.append(f'#{self.scanner.lineno} : syntax error, illegal {token}')
+            return 1
         elif token in self.Follow_set[state]:
-            error_msg = f'Missing {token} on line {self.scanner.lineno}'
-            error_code = 2
-        elif token != b:
-            error_msg = f'Missing {b} on line {self.scanner.lineno}'
-            error_code = 3
-        return error_msg,error_code
+            self.stateList.pop()
+            self.parse_tree.pop()
+            self.tree_depth -= 1
+            self.balanceStateList()
+            self.current_state = self.stateList[-1]
+            self.syntax_erros.append(f'#{self.scanner.lineno} : syntax error, missing {state}')
+            return 2
+        elif token == '$':
+            self.parse_tree.pop()
+            self.syntax_erros.append(f'#{self.scanner.lineno + 1} : syntax error, unexpected EOF')
+            return 3
+
+        
+        return 0
+ 
 
     def call(self, input_token): 
-        print(f'state list: {self.stateList}')
-        # print(input_token)
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
             next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
             return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
         
-        epsilonKey = None
+
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
             if key in self.terminals:
                 if input_token == key: 
                     return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            elif key != "epsilon" and  (input_token in self.Frist_set[key] or
+            elif key != "epsilon" and  (input_token in self.First_set[key] or
                                          (input_token in self.Follow_set[self.current_state[0]] and 
-                                                                               "EPSILON" in self.Frist_set[key])) :
+                                                                               "EPSILON" in self.First_set[key])) :
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
             
             elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]] :
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key] 
-            # elif key == "epsilon":
-            #     epsilonKey = "epsilon"
-                 
-        # if epsilonKey != None:      
-        #     return epsilonKey,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[epsilonKey]
-        print(f"token that goes to fuck: {input_token}")
+          
+          
         return None, None
     
+
     def add_tree_node(self, node):
-        self.parse_tree.append('\t' * self.tree_depth + node)
+        if isinstance(node, tuple) and len(node) == 2 and node[0] == '$':
+            node = "$"
+        self.parse_tree.append(f"{'    ' * (self.tree_depth)}{node.__str__()}")
+
+
+    def balanceStateList(self): 
+        if not self.stateList:
+            return
+        while(self.stateList[-1][1] == 1): # final state of diagram
+                self.stateList.pop()
+                self.tree_depth -= 1
+                if len(self.stateList) == 0: return 
+
     def write_outputs(self):
         with open('parse_tree.txt', 'w') as f:
             for line in self.parse_tree:
                 f.write(line + '\n')
+        with open('syntax_errors.txt', 'w') as f: 
+            if (len(self.syntax_erros) == 0): 
+                f.write("There is no syntax error.")
+            else:
+                for line in self.syntax_erros: 
+                    f.write(line + '\n')
 
+   
 
 
 parser = Parser("input.txt")
-# print(parser.state_machine["StatementList"][2])
+# print(parser.state_machine["SelectionStmt"][7])
 parser.getTokens()
 parser.write_outputs()
