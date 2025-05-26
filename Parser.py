@@ -328,7 +328,7 @@ class Parser:
         self.syntaxErrors = []
         self.parse_tree = []
         self.syntax_erros = []
-        self.tree_depth = 0
+        self.tree_depth = -1
         self.First_set = first_sets = {
         "Program": ["int", "void", "EPSILON"],
         "DeclarationList": ["int", "void", "EPSILON"],
@@ -431,7 +431,8 @@ class Parser:
         self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID", "=", "==", "*", "$"})
         self.current_state = ("Program", 0)
         self.stateList = [self.current_state] # stack for tokens of Input
-        self.add_tree_node("Program")
+        self.parse_tree.append("Program")
+        self.depthSit = [False] * 1000
         
 
     def getTokens(self): 
@@ -507,11 +508,11 @@ class Parser:
                     self.stateList.pop()  
                     self.stateList.append((self.current_state[0], 
                             self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_link]))
-                    # print(self.stateList[-1])
+
                     self.balanceStateList()
                     if(state == '$'):
                         self.parse_tree.append('$')
-                        # print(self.stateList)
+
                     else:
                         self.syntax_erros.append(f'#{self.scanner.lineno} : syntax error, missing {state}')
                     if(self.stateList): self.current_state = self.stateList[-1]
@@ -531,7 +532,7 @@ class Parser:
     def recover(self, token):
         state = self.current_state[0]
          # flags:  0 1 -> break 2 -> continue
-        if not token in self.Follow_set[state] and token != '$':
+        if (not token in self.Follow_set[state] or len(self.stateList) <= 2) and token != '$':
             # print(token)
         # if not token in self.Follow_set[state]:        
             self.stateList.pop()
@@ -581,7 +582,7 @@ class Parser:
                 # print(f'token: {input_token}')
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
             
-            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]] :
+            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]] and  len(self.stateList) > 2:
                 # print("kir")
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key] 
           
@@ -590,9 +591,25 @@ class Parser:
     
 
     def add_tree_node(self, node):
-        if isinstance(node, tuple) and len(node) == 2 and node[0] == '$':
-            node = "$"
-        self.parse_tree.append(f"{'    ' * (self.tree_depth)}{node.__str__()}")
+        if isinstance(node, tuple) and len(node) == 2:
+            if  node[0] == '$': 
+                node = "$"
+            else: 
+                node = "(" + node[0] + ', ' + node[1] +  ") "
+        
+        charParent = None
+        self.depthSit[self.tree_depth] = False
+
+        if self.stateList[-1][1] == 1:
+            charParent = '└── '
+            self.depthSit[self.tree_depth] = True
+        else :
+            charParent =  '├── '
+        # {'│   ' * (self.tree_depth - 1)}
+        # print(self.tree_depth, node)
+        prefix = ''.join( ('│   ' if self.depthSit[i] == False else '    ') for i in range(0, self.tree_depth))
+
+        self.parse_tree.append(f"{prefix}{charParent}{node}")
 
 
     def balanceStateList(self): 
@@ -601,13 +618,14 @@ class Parser:
         while(self.stateList[-1][1] == 1): # final state of diagram
                 self.stateList.pop()
                 self.tree_depth -= 1
+
                 if len(self.stateList) == 0: return 
 
-    def write_outputs(self, i):
-        with open(f'parse_tree{i}.txt', 'w') as f:
+    def write_outputs(self):
+        with open(f'parse_tree.txt', 'w') as f:
             for line in self.parse_tree:
                 f.write(line + '\n')
-        with open(f'syntax_errors{i}.txt', 'w') as f: 
+        with open(f'syntax_errors.txt', 'w') as f: 
             if (len(self.syntax_erros) == 0): 
                 f.write("There is no syntax error.")
             else:
@@ -616,9 +634,8 @@ class Parser:
 
    
 
-for i in range(1,11):
-    parser = Parser(f"input{i}.txt")
-    parser.getTokens()
-    parser.write_outputs(i)
+parser = Parser("input.txt")
+parser.getTokens()
+parser.write_outputs()
 
 # print(parser.state_machine["D"][0:6])
