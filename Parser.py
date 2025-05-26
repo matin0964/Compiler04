@@ -437,19 +437,11 @@ class Parser:
 
     def getTokens(self): 
         currentIndex = 0
-        # daste = 0
         nextToken = (None, None)
         while(self.stateList):
             
             nextToken, endToken = self.scanner.get_next_token(currentIndex)
             if nextToken: 
-                
-                # print(nextToken, self.stateList)
-                # if nextToken[0] == '$' and daste == 2: return
-                # # if nextToken[0] == '$' and daste == 1: daste += 1
-                # if (nextToken[0] == '$'): daste += 1
-
-
                 check_token = nextToken[0]
                 if check_token == "SYMBOL" or check_token == "KEYWORD": 
                     check_token = nextToken[1]
@@ -459,7 +451,6 @@ class Parser:
                 while not state in self.terminals:
                     flag = 0
                     state, number = self.call(check_token)
-                    # print(self.stateList)
                     if state is None: # Panic mode NT mode 
                         flag = self.recover(check_token)
                         if flag == 1: break  
@@ -493,7 +484,6 @@ class Parser:
                 elif flag == 3:
                     break
 
-                # print("mewo")  
                 # terminal mode
                 if self.match(state, check_token): 
                     self.stateList.pop()
@@ -532,9 +522,8 @@ class Parser:
     def recover(self, token):
         state = self.current_state[0]
          # flags:  0 1 -> break 2 -> continue
-        if (not token in self.Follow_set[state] or len(self.stateList) <= 2) and token != '$':
-            # print(token)
-        # if not token in self.Follow_set[state]:        
+        if not token in self.Follow_set[state] and token != '$':
+     
             self.stateList.pop()
             self.stateList.append((self.current_state[0],0))
             self.current_state = self.stateList[-1]
@@ -561,29 +550,21 @@ class Parser:
  
 
     def call(self, input_token):
-        # print(f'input token: {input_token}')
-        # if(input_token == '+' or input_token == 'ID'):
-        # print(self.stateList)
-        # print(f'state machine: {self.state_machine[self.current_state[0]][self.current_state[1]]}')
-        # print(f'current state: {self.current_state}')
+
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
             next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
             return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
-        # print(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
             if key in self.terminals:
                 if input_token == key: 
-                    # print(f'key: {key}')
                     return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
             elif key != "epsilon" and  (input_token in self.First_set[key] or
                                          (input_token in self.Follow_set[key] and 
-                                                                               "EPSILON" in self.First_set[key])) : # I have modified here
-                # print(f'key: {key}')
-                # print(f'token: {input_token}')
+                                                                               "EPSILON" in self.First_set[key])) :
+
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
             
-            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]] and  len(self.stateList) > 2:
-                # print("kir")
+            elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]]:
                 return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key] 
           
           
@@ -605,8 +586,7 @@ class Parser:
             self.depthSit[self.tree_depth] = True
         else :
             charParent =  '├── '
-        # {'│   ' * (self.tree_depth - 1)}
-        # print(self.tree_depth, node)
+
         prefix = ''.join( ('│   ' if self.depthSit[i] == False else '    ') for i in range(0, self.tree_depth))
 
         self.parse_tree.append(f"{prefix}{charParent}{node}")
@@ -638,4 +618,3 @@ parser = Parser("input.txt")
 parser.getTokens()
 parser.write_outputs()
 
-# print(parser.state_machine["D"][0:6])
