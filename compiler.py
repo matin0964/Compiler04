@@ -2,6 +2,8 @@
 # Matin Mohammadi 401110329
 
 
+from enum import Enum
+
 class Scanner:
     def __init__(self, filename):
         self.KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
@@ -274,45 +276,45 @@ DeclarationList -> Declaration DeclarationList | EPSILON\n\
 Declaration -> DeclarationInitial DeclarationPrime\n\
 DeclarationInitial -> #push_ss TypeSpecifier ID\n\
 DeclarationPrime -> FunDeclarationPrime | VarDeclarationPrime\n\
-VarDeclarationPrime -> ; | [ NUM ] ;\n\
-FunDeclarationPrime -> ( Params ) CompoundStmt\n\
+VarDeclarationPrime -> ; #dec_var | [ #push_ss NUM ] ; #dec_arr\n\
+FunDeclarationPrime -> ( Params ) #param_det CompoundStmt #cls_func\n\
 TypeSpecifier -> int | void\n\
-Params -> int ID ParamPrime ParamList | void\n\
+Params -> #push_ss int #push_ss ID ParamPrime ParamList | void\n\
 ParamList -> , Param ParamList | EPSILON\n\
 Param -> DeclarationInitial ParamPrime\n\
-ParamPrime -> [ ] | EPSILON\n\
-CompoundStmt -> { DeclarationList StatementList }\n\
+ParamPrime -> [ ] #dec_pnt | EPSILON #dec_var \n\
+CompoundStmt -> { #save_scope DeclarationList StatementList #back_scope }\n\
 StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
-ExpressionStmt -> Expression ; | break ; | ;\n\
-SelectionStmt -> if ( Expression ) Statement else Statement\n\
-IterationStmt -> while ( Expression ) Statement\n\
+ExpressionStmt -> Expression ; | break #save_b ; | ;\n\
+SelectionStmt -> if ( Expression ) #save Statement else #jpf_save Statement #jp\n\
+IterationStmt -> while #while_label ( Expression ) #save_while_jp Statement #end_while \n\
 ReturnStmt -> return ReturnStmtPrime\n\
-ReturnStmtPrime -> ; | Expression ;\n\
-Expression -> SimpleExpressionZegond | ID B\n\
-B -> = Expression | [ Expression ] H | SimpleExpressionPrime\n\
-H -> = Expression | G D C\n\
+ReturnStmtPrime -> #return_j ; | Expression #save_retval ;\n\
+Expression -> SimpleExpressionZegond | $pid ID B #print \n\
+B -> = Expression #assign | [ Expression ] #arr_addr H | SimpleExpressionPrime\n\
+H -> = Expression #assign | G D C\n\
 SimpleExpressionZegond -> AdditiveExpressionZegond C\n\
 SimpleExpressionPrime -> AdditiveExpressionPrime C\n\
-C -> Relop AdditiveExpression | EPSILON\n\
-Relop -> < | ==\n\
+C -> Relop AdditiveExpression #comp | EPSILON\n\
+Relop ->  #push_ss < | #push_ss ==\n\
 AdditiveExpression -> Term D\n\
 AdditiveExpressionPrime -> TermPrime D\n\
 AdditiveExpressionZegond -> TermZegond D\n\
-D -> Addop Term D | EPSILON\n\
-Addop -> + | -\n\
+D -> Addop Term #add_sub D | EPSILON\n\
+Addop -> #push_ss + | #push_ss -\n\
 Term -> SignedFactor G\n\
 TermPrime -> SignedFactorPrime G\n\
 TermZegond -> SignedFactorZegond G\n\
-G -> * SignedFactor G | EPSILON\n\
+G -> * SignedFactor #mult G | EPSILON\n\
 SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
-Factor -> ( Expression ) | ID VarCallPrime | NUM\n\
-VarCallPrime -> ( Args ) | VarPrime\n\
-VarPrime -> [ Expression ] | EPSILON\n\
+Factor -> ( Expression ) | #pid ID VarCallPrime | #push_num NUM\n\
+VarCallPrime -> #args_begin ( Args ) #end_args | VarPrime\n\
+VarPrime -> [ Expression ] #arr_addr | EPSILON\n\
 FactorPrime -> ( Args ) | EPSILON\n\
-FactorZegond -> ( Expression ) | NUM\n\
+FactorZegond -> ( Expression ) | #push_num NUM\n\
 Args -> ArgList | EPSILON\n\
 ArgList -> Expression ArgListPrime\n\
 ArgListPrime -> , Expression ArgListPrime | EPSILON"
@@ -449,7 +451,7 @@ class Parser:
                 flag = 0
                 while not state in self.terminals:
                     flag = 0
-                    
+
                     # action symbol states
                     if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1:
                         next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
@@ -622,13 +624,45 @@ class Parser:
                 for line in self.syntax_erros: 
                     f.write(line + '\n')
 
+
+class ActionSymbols(Enum): 
+    PUSH_SS = "push_ss"
+    DECLARE_VAR = "dec_var"
+    PARAM_INFO = "param_det"
+    CLOSE_FUNC = "cls_func"
+    DECLARE_POINTER = "dec_pnt"
+    DECLARE_VAR = "dec_var"
+    DECLARE_ARRAY = "dec_arr"
+    SAVE_SCOPE = "save_scope"
+    BACK_SCOPE = "back_scope"
+    SAVE_BREAK = "save_b" 
+    JUMP_IF_FALSE = "jpf_save"
+    JUMP = "jp"
+    SAVE = "save"
+    WHILE_LABEL = "while_label"
+    SAVE_WHILE_JUMP = "save_while_jp"
+    END_WHILE = "end_while"
+    RETURN_JUMP = "return_j"
+    SAVE_RETURNVALUE = "save_retval"
+    PRINT = "print"
+    ASSIGN = "assign"
+    ARRAY_ADDRESS = "arr_addr"
+    COMPARE = "comp"
+    MULTIPLY = "mult"
+    ADD_SUB = "add_sub"
+    PID = "pid"
+    ARGS_BEGIN = "args_begin"
+    END_ARGS = "end_args"
+    PUSH_NUM = "push_num"
+    POP_SS = "pop_ss"
+
 class CodeGenerator:
     def __init__(self):
         self.code = []
       
 
     def code_gen(self, action_symbol):
-        print("Code generation is not implemented yet.") 
+        print(ActionSymbols(action_symbol).name) 
         
 
 parser = Parser("input.txt")
