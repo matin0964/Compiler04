@@ -802,7 +802,7 @@ class CodeGenerator:
         pass
     def end_while_subroutine(self,):
         idx = self.memory.get_pb().get_index()
-        addr = self.ss.pop(-1)
+        addr = int(self.ss.pop(-1))
         instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
         instruction2 = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction1, addr)
@@ -810,10 +810,19 @@ class CodeGenerator:
 
         pass
     def return_jump_subroutine(self):
+        instruction = ["JP", self.ss.pop(-1), None, None] #???
+        self.memory.get_pb().add_instruction(instruction)
+
         pass
     def save_return_value_subroutine(self):
+        ret_val = self.ss.pop(-1)
+        # todo: where to save the return value
+        instruction = ["JP", self.ss.pop(-1), None, None]
+        self.memory.get_pb().add_instruction(instruction)
         pass
     def print_subroutine(self,):
+        content = self.ss.pop(-1)
+        instruction = ["PRINT", content, None, None]
         pass
     def assign_subroutine(self,):
         instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
@@ -824,8 +833,19 @@ class CodeGenerator:
     def array_address_subroutine(self):
         pass
     def compare_subroutine(self,):
+        # it may not be correct at all
+        R = self.memory.get_tb().get_temp() # ???
+        op1 = self.ss.pop(-1)
+        operation =self.ss.pop(-1)
+        op2 = self.ss.pop(-1)
+        if operation == "<":
+            instruction = ["LT", op2, op1, R]
+            self.memory.get_tb().add_instruction(instruction)
+        elif operation == "==":
+            instruction = ["EQ", op2, op1, R]
+        self.ss.append(R)
 
-        pass
+
     def multiply_subroutine(self,):
         # todo type matching for semantic analysis
         t = self.memory.get_tb().get_temp()  # get temp
@@ -858,6 +878,7 @@ class CodeGenerator:
         self.ss.append('#' + token)
         pass
     def pop_ss_subroutine(self):
+        self.ss.pop(-1)
         pass
 
 
