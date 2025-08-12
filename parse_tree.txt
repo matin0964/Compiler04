@@ -1,43 +1,375 @@
-Program
-	DeclarationList
-		Declaration
-			DeclarationInitial
-				TypeSpecifier
-					int
-				ID
-			DeclarationPrime
-				FunDeclarationPrime
-					(
-					Params
-						void
-					)
-					CompoundStmt
-						{
-						DeclarationList
-							epsilon
-						StatementList
-							Statement
-								ReturnStmt
-									return
-									ReturnStmtPrime
-										Expression
-											ID
-											B
-												SimpleExpressionPrime
-													AdditiveExpressionPrime
-														TermPrime
-															SignedFactorPrime
-																FactorPrime
-																	epsilon
-															G
-																epsilon
-														D
-															epsilon
-													C
-														epsilon
-										;
-							StatementList
-								epsilon
-						}
-		DeclarationList
-			epsilon
+m
+t
+n
+l
+r
+ 
+ 
+e
+e
+ 
+s
+ 
+ 
+e
+t
+n
+ 
+t
+ 
+t
+n
+t
+t
+t
+ 
+ 
+n
+ 
+B
+e
+e
+e
+e
+e
+n
+G
+n
+D
+n
+C
+p
+n
+m
+G
+n
+D
+n
+ 
+t
+t
+ 
+t
+n
+t
+t
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+ 
+s
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+n
+G
+n
+D
+n
+C
+e
+n
+ 
+G
+n
+D
+n
+C
+ 
+t
+t
+t
+ 
+e
+n
+d
+d
+d
+d
+d
+ 
+G
+n
+D
+n
+C
+n
+ 
+t
+n
+ 
+ 
+t
+t
+ 
+t
+n
+t
+t
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+ 
+s
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+n
+G
+n
+D
+n
+C
+e
+n
+ 
+G
+n
+D
+n
+C
+ 
+t
+t
+t
+ 
+e
+n
+ 
+B
+e
+e
+e
+e
+e
+n
+G
+n
+D
+p
+m
+r
+ 
+r
+ 
+G
+n
+D
+n
+C
+ 
+t
+n
+t
+n
+t
+n
+l
+r
+ 
+ 
+e
+e
+ 
+s
+ 
+ 
+t
+ 
+t
+n
+l
+r
+ 
+ 
+e
+e
+t
+n
+l
+r
+ 
+ 
+e
+e
+t
+n
+t
+t
+t
+n
+ 
+B
+ 
+n
+ 
+B
+e
+e
+e
+e
+e
+ 
+s
+t
+n
+d
+d
+d
+d
+d
+ 
+G
+n
+D
+n
+C
+n
+e
+n
+ 
+G
+n
+D
+ 
+t
+t
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+ 
+s
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+n
+G
+n
+D
+n
+C
+e
+n
+ 
+G
+n
+D
+n
+C
+ 
+t
+t
+t
+n
+ 
+B
+ 
+n
+ 
+B
+e
+e
+e
+e
+e
+ 
+s
+t
+n
+d
+d
+d
+d
+d
+ 
+G
+n
+D
+n
+C
+n
+e
+n
+ 
+G
+n
+D
+ 
+t
+t
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+ 
+s
+t
+n
+ 
+B
+e
+e
+e
+e
+e
+n
+G
+n
+D
+n
+C
+e
+n
+ 
+G
+n
+D
+n
+C
+ 
+t
+n
+t
+n
+$
