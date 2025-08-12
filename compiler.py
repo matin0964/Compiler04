@@ -321,13 +321,13 @@ ArgListPrime -> , Expression ArgListPrime | EPSILON"
 
 
 
-        
+
 class Parser:
     def __init__(self, filename):
         self.state_machine = build_state_machines_from_string(grammar_string)
-        self.filename  = filename 
+        self.filename  = filename
         self.scanner  = Scanner(filename)
-        self.code_generator = CodeGenerator() # todo, 
+        self.code_generator = CodeGenerator() # todo,
         self.parse_tree = []
         self.syntax_erros = []
         self.tree_depth = -1
@@ -748,6 +748,7 @@ class CodeGenerator:
         # todo 
 
     def param_info_subroutine(self,):
+
         pass
     
     def close_func_subroutine(self,):
@@ -855,14 +856,14 @@ class CodeGenerator:
         
 
     def add_sub_subroutine(self, action):
-        # Can be combined with multiply
-        t = 0  # get temp ???
-        action_symbol = '+' if action == "add" else "-"
-        self.pb.append(["+", self.ss[-1], self.ss[-2], t])
-        self.i = self.i + 1
-        self.ss.pop(-1)
-        self.ss.pop(-1)
-        self.ss.append(t)
+        op1 = self.ss.pop(-1)
+        operation = self.ss.pop(-1)
+        op2 = self.ss.pop(-1)
+        R = self.memory.get_tb().get_temp()
+        op = "ADD" if operation == '+' else "SUB"
+        instruction = [op, op2, op1, R]
+        self.memory.get_tb().add_instruction(instruction)
+        self.ss.append(R)
 
         pass
     def pid_subroutine(self, token):
