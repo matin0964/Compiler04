@@ -794,10 +794,20 @@ class CodeGenerator:
         self.memory.get_pb().increament_index()  # increment pb index
 
     def while_label_subroutine(self,):
+        self.ss.append(self.memory.get_pb().get_index())
         pass
     def save_while_jump_subroutine(self,):
+        self.ss.append(self.memory.get_pb().get_index())
+        self.memory.get_pb().increament_index()
         pass
     def end_while_subroutine(self,):
+        idx = self.memory.get_pb().get_index()
+        addr = self.ss.pop(-1)
+        instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
+        instruction2 = ["JP", self.ss.pop(-1), None, None]
+        self.memory.get_pb().add_instruction(instruction1, addr)
+        self.memory.get_pb().add_instruction(instruction2)
+
         pass
     def return_jump_subroutine(self):
         pass
@@ -814,6 +824,7 @@ class CodeGenerator:
     def array_address_subroutine(self):
         pass
     def compare_subroutine(self,):
+
         pass
     def multiply_subroutine(self,):
         # todo type matching for semantic analysis
