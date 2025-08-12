@@ -442,7 +442,7 @@ class Parser:
         nextToken = (None, None)
         while(self.stateList):   
             nextToken, endToken = self.scanner.get_next_token(currentIndex)
-            if nextToken: 
+            if nextToken:  
                 check_token = nextToken[0]
                 if check_token == "SYMBOL" or check_token == "KEYWORD": 
                     check_token = nextToken[1]
@@ -659,12 +659,70 @@ class ActionSymbols(Enum):
 class CodeGenerator:
     def __init__(self):
         self.code = []
+        self.memory = Memory(ProgramBlock(0,1000), DataBlock(0, 1000), TempBlock(0, 1000))
         self.ss = []
-        self.pb = []
-        self. i = 0
+        
 
-    def code_gen(self, action_symbol):
-        print(ActionSymbols(action_symbol).name) 
+    def code_gen(self, a_symbol):
+        action_symbol = ActionSymbols(a_symbol)
+        match action_symbol: 
+            case ActionSymbols.PUSH_SS:
+                self.push_ss_subroutine()
+            case ActionSymbols.DECLARE_VAR:
+                self.declare_var_subroutine()
+            case ActionSymbols.PARAM_INFO:
+                self.param_info_subroutine()
+            case ActionSymbols.CLOSE_FUNC:
+                self.close_func_subroutine()
+            case ActionSymbols.DECLARE_POINTER:
+                self.declare_pointer_subroutine()
+            case ActionSymbols.DECLARE_ARRAY:
+                self.declare_array_subroutine()
+            case ActionSymbols.SAVE_SCOPE:
+                self.save_scope_subroutine()
+            case ActionSymbols.BACK_SCOPE:
+                self.back_scope_subroutine()
+            case ActionSymbols.SAVE_BREAK:
+                self.save_break_subroutine()
+            case ActionSymbols.JUMP_IF_FALSE:
+                self.jump_if_false_subroutine()
+            case ActionSymbols.JUMP:
+                self.jump_subroutine()
+            case ActionSymbols.SAVE:
+                self.save_subroutine()
+            case ActionSymbols.WHILE_LABEL:
+                self.while_label_subroutine()
+            case ActionSymbols.SAVE_WHILE_JUMP:
+                self.save_while_jump_subroutine()
+            case ActionSymbols.END_WHILE:
+                self.end_while_subroutine()
+            case ActionSymbols.RETURN_JUMP:
+                self.return_jump_subroutine()
+            case ActionSymbols.SAVE_RETURNVALUE:
+                self.save_return_value_subroutine()
+            case ActionSymbols.PRINT:
+                self.print_subroutine()
+            case ActionSymbols.ASSIGN:
+                self.assign_subroutine()
+            case ActionSymbols.ARRAY_ADDRESS:
+                self.array_address_subroutine()
+            case ActionSymbols.COMPARE:
+                self.compare_subroutine()
+            case ActionSymbols.MULTIPLY:
+                self.multiply_subroutine()
+            case ActionSymbols.ADD_SUB:
+                self.add_sub_subroutine(a_symbol)
+            case ActionSymbols.PID:
+                self.pid_subroutine(a_symbol)
+            case ActionSymbols.ARGS_BEGIN:
+                self.args_begin_subroutine()
+            case ActionSymbols.END_ARGS:
+                self.end_args_subroutine()
+            case ActionSymbols.PUSH_NUM:
+                self.push_num_subroutine()
+            case ActionSymbols.POP_SS:
+                self.pop_ss_subroutine()
+
 
     def push_ss_subroutine(self,):
         pass
@@ -685,13 +743,22 @@ class CodeGenerator:
     def save_break_subroutine(self,):
         pass
     def jump_if_false_subroutine(self,):
-        pass
+        idx = self.memory.get_pb().get_index()
+        address = self.ss.pop(-1) # get address of jump
+        istra = ["jpf", self.ss.pop(-1), idx + 1, None]  # jpf instruction
+        self.memory.get_pb().add_instruction(istra, address)  # add instruction to pb
+
+        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        self.memory.get_pb().increament_index()  # increment pb index
+
     def jump_subroutine(self):
-        pass
+        idx = self.memory.get_pb().get_index()
+        instra = ["jp", idx, None, None]  # jp instruction
+        self.memory.get_pb().add_instruction(instra, self.ss.pop(-1))  # add instruction to pb
+
     def save_subroutine(self,):
-        self.ss.append(self.i) # current line of pb
-        self.pb.append(None)
-        self.i = self.i + 1
+        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        self.memory.get_pb().increament_index()  # increment pb index
         pass
     def while_label_subroutine(self,):
         pass
@@ -766,19 +833,27 @@ class Memory:
         self.db = data_block
         self.tb = temp_block # todo
 
-    def allocate(self, var_name, value):
-        if self.scope not in self.memory:
-            self.memory[self.scope] = {}
-        self.memory[self.scope][var_name] = value
+    # def allocate(self, var_name, value):
+    #     if self.scope not in self.memory:
+    #         self.memory[self.scope] = {}
+    #     self.memory[self.scope][var_name] = value
 
-    def get(self, var_name):
-        for scope in range(self.scope, -1, -1):
-            if scope in self.memory and var_name in self.memory[scope]:
-                return self.memory[scope][var_name]
-        return None
+    # def get(self, var_name):
+    #     for scope in range(self.scope, -1, -1):
+    #         if scope in self.memory and var_name in self.memory[scope]:
+    #             return self.memory[scope][var_name]
+    #     return None
 
-    def set_scope(self, scope):
-        self.scope = scope
+    # def set_scope(self, scope):
+    #     self.scope = scope
+    def get_pb(self):
+        return self.pb
+    
+    def get_db(self):
+        return self.db
+    
+    def get_tb(self):
+        return self.tb
 
 class ProgramBlock:
     def __init__(self, base, limit):
@@ -788,13 +863,22 @@ class ProgramBlock:
         self.block = []
 
 
-    def add_instruction(self, instruction):
+    def add_instruction(self, instruction, address=None):
         print("todo") # todo
 
 
     def set_index(self, index):
         if index <= self.limit:
             self.index = index
+    
+    def increament_index(self):
+        if self.index < self.limit:
+            self.index += 1
+        else:
+            raise Exception("Program block limit exceeded")
+    
+    def get_index(self):
+        return self.index
 
     def __repr__(self):
         return f"ProgramBlock(base={self.base}, limit={self.limit}, index={self.index})"
