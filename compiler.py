@@ -274,7 +274,7 @@ def build_state_machines_from_string(grammar_str: str) -> dict:
 grammar_string = "Program -> DeclarationList $\n\
 DeclarationList -> Declaration DeclarationList | EPSILON\n\
 Declaration -> DeclarationInitial DeclarationPrime\n\
-DeclarationInitial -> #push_ss TypeSpecifier ID\n\
+DeclarationInitial -> #push_ss TypeSpecifier #push_ss ID\n\
 DeclarationPrime -> FunDeclarationPrime | VarDeclarationPrime\n\
 VarDeclarationPrime -> ; #dec_var | [ #push_ss NUM ] ; #dec_arr\n\
 FunDeclarationPrime -> ( Params ) #param_det CompoundStmt #cls_func\n\
@@ -566,18 +566,31 @@ class Parser:
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
             next_state = list(parser.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
             return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
+        
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
+            number = self.current_state[1]
+            actionKey = None
+            # if key.startswith("#"):
+            #        actionKey = key[1:]
+            #        number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+            #        key = list(self.state_machine[self.current_state[0]][number].transitions)[0]
+            #        if key == "EPSILON": continue
+                   
+            # if key == "EPSILON":
+            #         key = "epsilon"
+            
             if key in self.terminals:
                 if input_token == key: 
-                    return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+                    if actionKey: self.code_generator.code_gen(actionKey)
+                    return key,  self.state_machine[self.current_state[0]][number].transitions[key]
             elif key != "epsilon" and  (input_token in self.First_set[key] or
                                          (input_token in self.Follow_set[key] and 
                                                                                "EPSILON" in self.First_set[key])) :
-
-                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+                if actionKey: self.code_generator.code_gen(actionKey)
+                return key,  self.state_machine[self.current_state[0]][number].transitions[key]
             
             elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]]:
-                return key,  self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key] 
+                return key,  self.state_machine[self.current_state[0]][number].transitions[key] 
           
           
         return None, None
@@ -627,7 +640,6 @@ class Parser:
 
 class ActionSymbols(Enum): 
     PUSH_SS = "push_ss"
-    DECLARE_VAR = "dec_var"
     PARAM_INFO = "param_det"
     CLOSE_FUNC = "cls_func"
     DECLARE_POINTER = "dec_pnt"
@@ -726,8 +738,12 @@ class CodeGenerator:
 
     def push_ss_subroutine(self,):
         pass
+    
     def declare_var_subroutine(self,):
-        pass
+        lexeme = self.ss.pop(-1)  # get variable name
+        type = self.ss.pop(-1)  # get type of variable
+        self.memory.get_db().add_data(lexeme, type)  # add data to data block
+        # todo 
     def param_info_subroutine(self,):
         pass
     def close_func_subroutine(self,):
@@ -735,6 +751,11 @@ class CodeGenerator:
     def declare_pointer_subroutine(self,):
         pass
     def declare_array_subroutine(self,):
+        lexeme = self.ss.pop(-1)  # get type of variable
+        size = self.ss.pop(-1)  # get variable name
+        type = self.ss.pop(-1)  # get type of variable
+        self.memory.get_db().add_data(lexeme, type, int(size))  # add data to data block
+        # todo
         pass
     def save_scope_subroutine(self,):
         pass
@@ -760,6 +781,7 @@ class CodeGenerator:
         self.ss.append(self.memory.get_pb().get_index()) # current line of pb
         self.memory.get_pb().increament_index()  # increment pb index
         pass
+
     def while_label_subroutine(self,):
         pass
     def save_while_jump_subroutine(self,):
@@ -800,7 +822,7 @@ class CodeGenerator:
     def add_sub_subroutine(self, action):
         # Can be combined with multiply
         t = 0  # get temp ???
-        action_symbol = '+' if action is "add" else "-"
+        action_symbol = '+' if action == "add" else "-"
         self.pb.append(["+", self.ss[-1], self.ss[-2], t])
         self.i = self.i + 1
         self.ss.pop(-1)
@@ -864,16 +886,23 @@ class ProgramBlock:
 
 
     def add_instruction(self, instruction, address=None):
-        print("todo") # todo
+
+        if address == None:
+            self.block[self.current_index] = instruction
+            self.increament_index()
+        else:
+            self.block[address] = instruction
+
+         # todo
 
 
     def set_index(self, index):
         if index <= self.limit:
             self.index = index
     
-    def increament_index(self):
-        if self.index < self.limit:
-            self.index += 1
+    def increament_index(self, num=1):
+        if self.index + num < self.limit:
+            self.index += num
         else:
             raise Exception("Program block limit exceeded")
     
@@ -883,14 +912,32 @@ class ProgramBlock:
     def __repr__(self):
         return f"ProgramBlock(base={self.base}, limit={self.limit}, index={self.index})"
 
+
+class DATA: 
+    def __init__(self, lexeme, type, address, isFunction=False):
+        self.lexeme = lexeme
+        self.type = type
+        self.address = address
+        self.isFunction = isFunction
+        if type == 'int' or type == 'array':
+            self.size = 4
+        
+
 class DataBlock:
     def __init__(self, base, limit):
         self.index = 0
         self.base = base
         self.limit = limit
-        self.data = []
+        self.block = []
 
-        # todo
+    def add_data(self, lexeme, type, arr_size=1):
+        for i in range(arr_size):
+            data= DATA(lexeme, type, self.index)
+            self.block[self.base + self.index] = data  
+            self.index += data.size; 
+            if self.index > self.limit:
+                raise Exception("Data block limit exceeded")
+        # symbol table todo    
 
     def __repr__(self):
         return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
@@ -921,6 +968,6 @@ class TempBlock:
 parser = Parser("input.txt")
 parser.getTokens()
 parser.write_outputs()
-
+print(CodeGenerator.memory.get_pb().block)
 
 
