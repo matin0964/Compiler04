@@ -754,7 +754,7 @@ class CodeGenerator:
     def close_func_subroutine(self,):
         # UPDATE symbol table todo
         self.return_jump_subroutine()
-        
+
     
     def declare_pointer_subroutine(self,):
         lexeme = self.semantic_stack.pop()
@@ -805,11 +805,11 @@ class CodeGenerator:
 
     def while_label_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index())
-        
+
     def save_while_jump_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index())
         self.memory.get_pb().increament_index()
-        
+
 
     def end_while_subroutine(self,):
         idx = self.memory.get_pb().get_index()
@@ -819,20 +819,20 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instruction1, addr)
         self.memory.get_pb().add_instruction(instruction2)
 
-        
+
     def return_jump_subroutine(self):
         return
         instruction = ["JP", self.ss.pop(-1), None, None] #???
         self.memory.get_pb().add_instruction(instruction)
 
-        
+
     def save_return_value_subroutine(self):
         return
         ret_val = self.ss.pop(-1)
         # todo: where to save the return value
         instruction = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction)
-        
+
     def print_subroutine(self,):
         if len(self.ss) > 0: content = self.ss.pop(-1)
         content = 0; # todo
@@ -843,7 +843,7 @@ class CodeGenerator:
         return
         instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        
+
 
 
     def array_address_subroutine(self):
@@ -864,7 +864,7 @@ class CodeGenerator:
             addInstra = ('ADD', t3, t1, t2)
         else:
             addInstra = ('ADD', '#' + str(base), t1, t2)
-        
+
         self.memory.get_pb.add_instruction(addInstra)  # add instruction
         self.ss.push('@' + str(t2))
 
@@ -900,30 +900,64 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instruction)
         self.ss.append(R)
 
-        
+
     def pid_subroutine(self, token):
         p = 0 # find address ???
         self.ss.append(p)
 
-        
+
     def args_begin_subroutine(self):
         pass
 
     def end_args_subroutine(self):
         pass
-        
+
     def push_num_subroutine(self, token):
         self.ss.append('#' + token)
-        
-        
+
+
     def pop_ss_subroutine(self):
         self.ss.pop(-1)
-        
 
 
 
 
 
+
+class Symbol:
+    def __init__(self, address = None, lexeme = None,):
+        self.address = address
+        self.lexeme = lexeme
+
+class SymbolTable:
+    def __init__(self,):
+        self.scopes = [[]]
+
+    def find_symbol(self, lexeme):
+        address = -1
+        for scope in reversed(self.scopes):
+            for symbol in scope:
+                if symbol.lexeme == lexeme:
+                    address = symbol.address
+                    return address
+        return None
+
+    def find_address(self, token): # todo
+        return self.find_symbol(token)
+
+    def find_symbol_by_address(self, address):
+        for scope in reversed(self.scopes):
+            for symbol in scope:
+                if symbol.address == address:
+                    return symbol
+        return None
+    def add_symbol(self, address, lexeme):
+        symbol = Symbol(address, lexeme)
+        self.scopes[-1].append(symbol)
+        return symbol
+
+    # def remove_symbol(self, lexeme):
+    #   pass
 
 class Memory:
     def __init__(self, program_block, data_block, temp_block):
