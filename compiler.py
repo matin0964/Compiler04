@@ -254,6 +254,9 @@ def build_state_machines_from_string(grammar_str: str) -> dict:
 
             prev = 0
             for i, symbol in enumerate(prod):
+                if symbol == "EPSILON":
+                    symbol = "epsilon"
+
                 # If last symbol, point to final state
                 if i == len(prod) - 1:
                     states[prev].add_transition(symbol, final_state_num)
@@ -331,7 +334,7 @@ class Parser:
         self.parse_tree = []
         self.syntax_erros = []
         self.tree_depth = -1
-        self.First_set = first_sets = {
+        self.First_set  = {
         "Program": ["int", "void", "EPSILON"],
         "DeclarationList": ["int", "void", "EPSILON"],
         "Declaration": ["int", "void"],
@@ -462,7 +465,7 @@ class Parser:
                             self.stateList.append((self.current_state[0], number))   
                             self.current_state = self.stateList[-1]
 
-                    state, number = self.call(check_token)
+                    state, number = self.call(check_token, nextToken[1])
                     if state is None: # Panic mode NT mode 
                         flag = self.recover(check_token)
                         if flag == 1: break  
@@ -561,27 +564,23 @@ class Parser:
         return 0
  
 
-    def call(self, input_token):
+    def call(self, input_token, actionSymbol_token=None):
 
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
-            next_state = list(parser.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
+            next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
             return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
         
         for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
             number = self.current_state[1]
             actionKey = None
-            # if key.startswith("#"):
-            #        actionKey = key[1:]
-            #        number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
-            #        key = list(self.state_machine[self.current_state[0]][number].transitions)[0]
-            #        if key == "EPSILON": continue
-                   
-            # if key == "EPSILON":
-            #         key = "epsilon"
-            
+            if key.startswith("#"):
+                actionKey = key[1:]
+                number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[key]
+                key = list(self.state_machine[self.current_state[0]][number].transitions)[0]
+
             if key in self.terminals:
                 if input_token == key: 
-                    if actionKey: self.code_generator.code_gen(actionKey)
+                    if actionKey: self.code_generator.code_gen(actionKey, actionSymbol_token)
                     return key,  self.state_machine[self.current_state[0]][number].transitions[key]
             elif key != "epsilon" and  (input_token in self.First_set[key] or
                                          (input_token in self.Follow_set[key] and 
@@ -671,12 +670,13 @@ class ActionSymbols(Enum):
 class CodeGenerator:
     def __init__(self):
         self.code = []
-        self.memory = Memory(ProgramBlock(0,1000), DataBlock(0, 1000), TempBlock(0, 1000))
+        self.memory = Memory(ProgramBlock(0,1000), DataBlock(0, 10000), TempBlock(0, 10000))
         self.ss = []
 
 
 
     def code_gen(self, a_symbol, token=None):
+        print(a_symbol)
         action_symbol = ActionSymbols(a_symbol)
         match action_symbol: 
             case ActionSymbols.PUSH_SS:
@@ -784,8 +784,9 @@ class CodeGenerator:
         # todo : > 1 break statement
 
     def jump_if_false_subroutine(self,):
+        return
         idx = self.memory.get_pb().get_index()
-        address = self.ss.pop(-1) # get address of jump
+        address = self.ss.pop(-1)
         istra = ["jpf", self.ss.pop(-1), idx + 1, None]  # jpf instruction
         self.memory.get_pb().add_instruction(istra, address)  # add instruction to pb
 
@@ -793,6 +794,7 @@ class CodeGenerator:
         self.memory.get_pb().increament_index()  # increment pb index
 
     def jump_subroutine(self):
+        return
         idx = self.memory.get_pb().get_index()
         instra = ["jp", idx, None, None]  # jp instruction
         self.memory.get_pb().add_instruction(instra, self.ss.pop(-1))  # add instruction to pb
@@ -819,21 +821,26 @@ class CodeGenerator:
 
         
     def return_jump_subroutine(self):
+        return
         instruction = ["JP", self.ss.pop(-1), None, None] #???
         self.memory.get_pb().add_instruction(instruction)
 
         
     def save_return_value_subroutine(self):
+        return
         ret_val = self.ss.pop(-1)
         # todo: where to save the return value
         instruction = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction)
         
     def print_subroutine(self,):
-        content = self.ss.pop(-1)
-        instruction = ["PRINT", content, None, None]
+        if len(self.ss) > 0: content = self.ss.pop(-1)
+        content = 0; # todo
+        instra = ["PRINT", content, None, None]
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         
     def assign_subroutine(self,):
+        return
         instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         
@@ -890,7 +897,7 @@ class CodeGenerator:
         R = self.memory.get_tb().get_temp()
         op = "ADD" if operation == '+' else "SUB"
         instruction = [op, op2, op1, R]
-        self.memory.get_tb().add_instruction(instruction)
+        self.memory.get_pb().add_instruction(instruction)
         self.ss.append(R)
 
         
@@ -951,12 +958,13 @@ class ProgramBlock:
         self.index = 0
         self.base = base
         self.limit = limit
-        self.block = []
+        self.block = {}
 
 
     def add_instruction(self, instruction, address=None):
+        print("here")
         if address == None:
-            self.block[self.current_index] = instruction
+            self.block[self.index] = instruction
             self.increament_index()
         else:
             self.block[address] = instruction
@@ -995,13 +1003,13 @@ class DataBlock:
         self.index = 0
         self.base = base
         self.limit = limit
-        self.block = []
+        self.block = {}
 
     def add_data(self, lexeme, type, arr_size=1):
         for i in range(arr_size):
             data= DATA(lexeme, type, self.index)
             self.block[self.base + self.index] = data  
-            self.index += data.size; 
+            self.index += 4 # assuming int size is 4 bytes; 
             if self.index > self.limit:
                 raise Exception("Data block limit exceeded")
         # symbol table todo    
@@ -1034,6 +1042,6 @@ class TempBlock:
 parser = Parser("input.txt")
 parser.getTokens()
 parser.write_outputs()
-print(CodeGenerator.memory.get_pb().block)
+print(parser.code_generator.memory.get_pb().block)  # Print the program block instructions
 
 
