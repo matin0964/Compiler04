@@ -626,35 +626,35 @@ class Parser:
 
 
 class ActionSymbols(Enum): 
-        PUSH_SS = "push_ss"
-        DECLARE_VAR = "dec_var"
-        PARAM_INFO = "param_det"
-        CLOSE_FUNC = "cls_func"
-        DECLARE_POINTER = "dec_pnt"
-        DECLARE_VAR = "dec_var"
-        DECLARE_ARRAY = "dec_arr"
-        SAVE_SCOPE = "save_scope"
-        BACK_SCOPE = "back_scope"
-        SAVE_BREAK = "save_b"
-        JUMP_IF_FALSE = "jpf_save"
-        JUMP = "jp"
-        SAVE = "save"
-        WHILE_LABEL = "while_label"
-        SAVE_WHILE_JUMP = "save_while_jp"
-        END_WHILE = "end_while"
-        RETURN_JUMP = "return_j"
-        SAVE_RETURN_VALUE = "save_retval"
-        PRINT = "print"
-        ASSIGN = "assign"
-        ARRAY_ADDRESS = "arr_addr"
-        COMPARE = "comp"
-        MULTIPLY = "mult"
-        ADD_SUB = "add_sub"
-        PID = "pid"
-        ARGS_BEGIN = "args_begin"
-        END_ARGS = "end_args"
-        PUSH_NUM = "push_num"
-        POP_SS = "pop_ss"
+    PUSH_SS = "push_ss"
+    DECLARE_VAR = "dec_var"
+    PARAM_INFO = "param_det"
+    CLOSE_FUNC = "cls_func"
+    DECLARE_POINTER = "dec_pnt"
+    DECLARE_VAR = "dec_var"
+    DECLARE_ARRAY = "dec_arr"
+    SAVE_SCOPE = "save_scope"
+    BACK_SCOPE = "back_scope"
+    SAVE_BREAK = "save_b" 
+    JUMP_IF_FALSE = "jpf_save"
+    JUMP = "jp"
+    SAVE = "save"
+    WHILE_LABEL = "while_label"
+    SAVE_WHILE_JUMP = "save_while_jp"
+    END_WHILE = "end_while"
+    RETURN_JUMP = "return_j"
+    SAVE_RETURNVALUE = "save_retval"
+    PRINT = "print"
+    ASSIGN = "assign"
+    ARRAY_ADDRESS = "arr_addr"
+    COMPARE = "comp"
+    MULTIPLY = "mult"
+    ADD_SUB = "add_sub"
+    PID = "pid"
+    ARGS_BEGIN = "args_begin"
+    END_ARGS = "end_args"
+    PUSH_NUM = "push_num"
+    POP_SS = "pop_ss"
 
 class CodeGenerator:
     def __init__(self):
@@ -667,7 +667,7 @@ class CodeGenerator:
         print(ActionSymbols(action_symbol).name) 
 
     def push_ss_subroutine(self,):
-        pass    
+        pass
     def declare_var_subroutine(self,):
         pass
     def param_info_subroutine(self,):
@@ -756,6 +756,83 @@ class CodeGenerator:
         pass
 
 
+
+
+
+
+class Memory:
+    def __init__(self, program_block, data_block, temp_block):
+        self.pb = program_block
+        self.db = data_block
+        self.tb = temp_block # todo
+
+    def allocate(self, var_name, value):
+        if self.scope not in self.memory:
+            self.memory[self.scope] = {}
+        self.memory[self.scope][var_name] = value
+
+    def get(self, var_name):
+        for scope in range(self.scope, -1, -1):
+            if scope in self.memory and var_name in self.memory[scope]:
+                return self.memory[scope][var_name]
+        return None
+
+    def set_scope(self, scope):
+        self.scope = scope
+
+class ProgramBlock:
+    def __init__(self, base, limit):
+        self.index = 0
+        self.base = base
+        self.limit = limit
+        self.block = []
+
+
+    def add_instruction(self, instruction):
+        print("todo") # todo
+
+
+    def set_index(self, index):
+        if index <= self.limit:
+            self.index = index
+
+    def __repr__(self):
+        return f"ProgramBlock(base={self.base}, limit={self.limit}, index={self.index})"
+
+class DataBlock:
+    def __init__(self, base, limit):
+        self.index = 0
+        self.base = base
+        self.limit = limit
+        self.data = []
+
+        # todo
+
+    def __repr__(self):
+        return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
+
+class TempBlock:
+    def __init__(self, base, limit):
+        self.index = 0
+        self.base = base
+        self.limit = limit
+        self.temp = []
+
+    def add_temp(self, temp):
+        if self.index < self.limit:
+            self.temp.append(temp)
+            self.index += 1
+        else:
+            raise Exception("Temporary block limit exceeded")
+
+    def get_temp(self, index):
+        if 0 <= index < self.index:
+            return self.temp[index]
+        else:
+            raise IndexError("Temporary index out of range")
+
+    def __repr__(self):
+        return f"TempBlock(base={self.base}, limit={self.limit}, temp={self.temp})"
 
 parser = Parser("input.txt")
 parser.getTokens()
