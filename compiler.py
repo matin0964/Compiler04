@@ -291,7 +291,7 @@ SelectionStmt -> if ( Expression ) #save Statement else #jpf_save Statement #jp\
 IterationStmt -> while #while_label ( Expression ) #save_while_jp Statement #end_while \n\
 ReturnStmt -> return ReturnStmtPrime\n\
 ReturnStmtPrime -> #return_j ; | Expression #save_retval ;\n\
-Expression -> SimpleExpressionZegond | $pid ID B #print \n\
+Expression -> SimpleExpressionZegond | #pid ID B #print \n\
 B -> = Expression #assign | [ Expression ] #arr_addr H | SimpleExpressionPrime\n\
 H -> = Expression #assign | G D C\n\
 SimpleExpressionZegond -> AdditiveExpressionZegond C\n\
@@ -456,7 +456,7 @@ class Parser:
                     if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1:
                         next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
                         if next_state.startswith("#"):
-                            self.code_generator.code_gen(next_state[1:])
+                            self.code_generator.code_gen(next_state[1:], nextToken[1])
                             number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
                             self.stateList.pop()
                             self.stateList.append((self.current_state[0], number))   
@@ -673,13 +673,14 @@ class CodeGenerator:
         self.code = []
         self.memory = Memory(ProgramBlock(0,1000), DataBlock(0, 1000), TempBlock(0, 1000))
         self.ss = []
-        
 
-    def code_gen(self, a_symbol):
+
+
+    def code_gen(self, a_symbol, token=None):
         action_symbol = ActionSymbols(a_symbol)
         match action_symbol: 
             case ActionSymbols.PUSH_SS:
-                self.push_ss_subroutine()
+                self.push_ss_subroutine(token)
             case ActionSymbols.DECLARE_VAR:
                 self.declare_var_subroutine()
             case ActionSymbols.PARAM_INFO:
@@ -731,25 +732,30 @@ class CodeGenerator:
             case ActionSymbols.END_ARGS:
                 self.end_args_subroutine()
             case ActionSymbols.PUSH_NUM:
-                self.push_num_subroutine()
+                self.push_num_subroutine(token)
             case ActionSymbols.POP_SS:
                 self.pop_ss_subroutine()
 
 
-    def push_ss_subroutine(self,):
+    def push_ss_subroutine(self, token):
+        self.ss.append(token)  # push token to stack
         pass
-    
+
     def declare_var_subroutine(self,):
         lexeme = self.ss.pop(-1)  # get variable name
         type = self.ss.pop(-1)  # get type of variable
         self.memory.get_db().add_data(lexeme, type)  # add data to data block
         # todo 
+
     def param_info_subroutine(self,):
         pass
+    
     def close_func_subroutine(self,):
         pass
+    
     def declare_pointer_subroutine(self,):
         pass
+    
     def declare_array_subroutine(self,):
         lexeme = self.ss.pop(-1)  # get type of variable
         size = self.ss.pop(-1)  # get variable name
@@ -757,12 +763,18 @@ class CodeGenerator:
         self.memory.get_db().add_data(lexeme, type, int(size))  # add data to data block
         # todo
         pass
+    
     def save_scope_subroutine(self,):
         pass
+    
     def back_scope_subroutine(self,):
         pass
+
     def save_break_subroutine(self,):
-        pass
+        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        self.memory.get_pb().increament_index()  # increment pb index
+        # todo : > 1 break statement
+
     def jump_if_false_subroutine(self,):
         idx = self.memory.get_pb().get_index()
         address = self.ss.pop(-1) # get address of jump
@@ -780,7 +792,6 @@ class CodeGenerator:
     def save_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index()) # current line of pb
         self.memory.get_pb().increament_index()  # increment pb index
-        pass
 
     def while_label_subroutine(self,):
         pass
@@ -795,13 +806,8 @@ class CodeGenerator:
     def print_subroutine(self,):
         pass
     def assign_subroutine(self,):
-        # for now I've just assumed pb and ss are simple arrays
-
-        self.pb.append([":=", self.ss[-1], self.ss[-2], None])
-        self.i = self.i + 1
-        self.ss.pop(-1)
-        self.ss.pop(-1)
-
+        instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         pass
 
 
@@ -810,14 +816,12 @@ class CodeGenerator:
     def compare_subroutine(self,):
         pass
     def multiply_subroutine(self,):
-        t = 0 # get temp ???
-        self.pb.append(["*", self.ss[-1], self.ss[-2], t])
-        self.i = self.i + 1
-        self.ss.pop(-1)
-        self.ss.pop(-1)
-        self.ss.append(t)
-
-        pass
+        # todo type matching for semantic analysis
+        t = self.memory.get_tb().get_temp()  # get temp
+        instra = ["MULT",self.ss.pop(-1), self.ss.pop(-1), t]  # multiply instruction]
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+        self.ss.append(t)  # push temp to stack
+        
 
     def add_sub_subroutine(self, action):
         # Can be combined with multiply
@@ -839,7 +843,8 @@ class CodeGenerator:
         pass
     def end_args_subroutine(self):
         pass
-    def push_num_subroutine(self):
+    def push_num_subroutine(self, token):
+        self.ss.append('#' + token)
         pass
     def pop_ss_subroutine(self):
         pass
@@ -886,7 +891,6 @@ class ProgramBlock:
 
 
     def add_instruction(self, instruction, address=None):
-
         if address == None:
             self.block[self.current_index] = instruction
             self.increament_index()
@@ -896,9 +900,8 @@ class ProgramBlock:
          # todo
 
 
-    def set_index(self, index):
-        if index <= self.limit:
-            self.index = index
+    def get_index(self):
+        return self.index
     
     def increament_index(self, num=1):
         if self.index + num < self.limit:
@@ -956,11 +959,10 @@ class TempBlock:
         else:
             raise Exception("Temporary block limit exceeded")
 
-    def get_temp(self, index):
-        if 0 <= index < self.index:
-            return self.temp[index]
-        else:
-            raise IndexError("Temporary index out of range")
+    def get_temp(self):
+        idx = self.index
+        self.index += 4
+        return idx
 
     def __repr__(self):
         return f"TempBlock(base={self.base}, limit={self.limit}, temp={self.temp})"
