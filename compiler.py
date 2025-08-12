@@ -752,6 +752,8 @@ class CodeGenerator:
         pass
     
     def close_func_subroutine(self,):
+        ret_addr = self.ss.pop(-1)
+        instruction = ['JP', ret_addr, None, None]
         pass
     
     def declare_pointer_subroutine(self,):
@@ -833,6 +835,7 @@ class CodeGenerator:
 
     def array_address_subroutine(self):
         pass
+
     def compare_subroutine(self,):
         # it may not be correct at all
         R = self.memory.get_tb().get_temp() # ???
@@ -869,12 +872,13 @@ class CodeGenerator:
     def pid_subroutine(self, token):
         p = 0 # find address ???
         self.ss.append(p)
-
         pass
+
     def args_begin_subroutine(self):
         pass
     def end_args_subroutine(self):
         pass
+
     def push_num_subroutine(self, token):
         self.ss.append('#' + token)
         pass
@@ -886,6 +890,40 @@ class CodeGenerator:
 
 
 
+class Symbol:
+    def __init__(self, address = None, lexeme = None,):
+        self.address = address
+        self.lexeme = lexeme
+
+class SymbolTable:
+    def __init__(self,):
+        self.scopes = [[]]
+
+    def find_symbol(self, lexeme):
+        address = -1
+        for scope in reversed(self.scopes):
+            for symbol in scope:
+                if symbol.lexeme == lexeme:
+                    address = symbol.address
+                    return address
+        return None
+
+    def find_address(self, token): # todo
+        return self.find_symbol(token)
+
+    def find_symbol_by_address(self, address):
+        for scope in reversed(self.scopes):
+            for symbol in scope:
+                if symbol.address == address:
+                    return symbol
+        return None
+    def add_symbol(self, address, lexeme):
+        symbol = Symbol(address, lexeme)
+        self.scopes[-1].append(symbol)
+        return symbol
+
+    # def remove_symbol(self, lexeme):
+    #   pass
 
 class Memory:
     def __init__(self, program_block, data_block, temp_block):
