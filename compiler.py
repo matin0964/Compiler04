@@ -626,44 +626,136 @@ class Parser:
 
 
 class ActionSymbols(Enum): 
-    PUSH_SS = "push_ss"
-    DECLARE_VAR = "dec_var"
-    PARAM_INFO = "param_det"
-    CLOSE_FUNC = "cls_func"
-    DECLARE_POINTER = "dec_pnt"
-    DECLARE_VAR = "dec_var"
-    DECLARE_ARRAY = "dec_arr"
-    SAVE_SCOPE = "save_scope"
-    BACK_SCOPE = "back_scope"
-    SAVE_BREAK = "save_b" 
-    JUMP_IF_FALSE = "jpf_save"
-    JUMP = "jp"
-    SAVE = "save"
-    WHILE_LABEL = "while_label"
-    SAVE_WHILE_JUMP = "save_while_jp"
-    END_WHILE = "end_while"
-    RETURN_JUMP = "return_j"
-    SAVE_RETURNVALUE = "save_retval"
-    PRINT = "print"
-    ASSIGN = "assign"
-    ARRAY_ADDRESS = "arr_addr"
-    COMPARE = "comp"
-    MULTIPLY = "mult"
-    ADD_SUB = "add_sub"
-    PID = "pid"
-    ARGS_BEGIN = "args_begin"
-    END_ARGS = "end_args"
-    PUSH_NUM = "push_num"
-    POP_SS = "pop_ss"
+        PUSH_SS = "push_ss"
+        DECLARE_VAR = "dec_var"
+        PARAM_INFO = "param_det"
+        CLOSE_FUNC = "cls_func"
+        DECLARE_POINTER = "dec_pnt"
+        DECLARE_VAR = "dec_var"
+        DECLARE_ARRAY = "dec_arr"
+        SAVE_SCOPE = "save_scope"
+        BACK_SCOPE = "back_scope"
+        SAVE_BREAK = "save_b"
+        JUMP_IF_FALSE = "jpf_save"
+        JUMP = "jp"
+        SAVE = "save"
+        WHILE_LABEL = "while_label"
+        SAVE_WHILE_JUMP = "save_while_jp"
+        END_WHILE = "end_while"
+        RETURN_JUMP = "return_j"
+        SAVE_RETURN_VALUE = "save_retval"
+        PRINT = "print"
+        ASSIGN = "assign"
+        ARRAY_ADDRESS = "arr_addr"
+        COMPARE = "comp"
+        MULTIPLY = "mult"
+        ADD_SUB = "add_sub"
+        PID = "pid"
+        ARGS_BEGIN = "args_begin"
+        END_ARGS = "end_args"
+        PUSH_NUM = "push_num"
+        POP_SS = "pop_ss"
 
 class CodeGenerator:
     def __init__(self):
         self.code = []
-      
+        self.ss = []
+        self.pb = []
+        self. i = 0
 
     def code_gen(self, action_symbol):
         print(ActionSymbols(action_symbol).name) 
-        
+
+    def push_ss_subroutine(self,):
+        pass    
+    def declare_var_subroutine(self,):
+        pass
+    def param_info_subroutine(self,):
+        pass
+    def close_func_subroutine(self,):
+        pass
+    def declare_pointer_subroutine(self,):
+        pass
+    def declare_array_subroutine(self,):
+        pass
+    def save_scope_subroutine(self,):
+        pass
+    def back_scope_subroutine(self,):
+        pass
+    def save_break_subroutine(self,):
+        pass
+    def jump_if_false_subroutine(self,):
+        pass
+    def jump_subroutine(self):
+        pass
+    def save_subroutine(self,):
+        self.ss.append(self.i) # current line of pb
+        self.pb.append(None)
+        self.i = self.i + 1
+        pass
+    def while_label_subroutine(self,):
+        pass
+    def save_while_jump_subroutine(self,):
+        pass
+    def end_while_subroutine(self,):
+        pass
+    def return_jump_subroutine(self):
+        pass
+    def save_return_value_subroutine(self):
+        pass
+    def print_subroutine(self,):
+        pass
+    def assign_subroutine(self,):
+        # for now I've just assumed pb and ss are simple arrays
+
+        self.pb.append([":=", self.ss[-1], self.ss[-2], None])
+        self.i = self.i + 1
+        self.ss.pop(-1)
+        self.ss.pop(-1)
+
+        pass
+
+
+    def array_address_subroutine(self):
+        pass
+    def compare_subroutine(self,):
+        pass
+    def multiply_subroutine(self,):
+        t = 0 # get temp ???
+        self.pb.append(["*", self.ss[-1], self.ss[-2], t])
+        self.i = self.i + 1
+        self.ss.pop(-1)
+        self.ss.pop(-1)
+        self.ss.append(t)
+
+        pass
+
+    def add_sub_subroutine(self, action):
+        # Can be combined with multiply
+        t = 0  # get temp ???
+        action_symbol = '+' if action is "add" else "-"
+        self.pb.append(["+", self.ss[-1], self.ss[-2], t])
+        self.i = self.i + 1
+        self.ss.pop(-1)
+        self.ss.pop(-1)
+        self.ss.append(t)
+
+        pass
+    def pid_subroutine(self, token):
+        p = 0 # find address ???
+        self.ss.append(p)
+
+        pass
+    def args_begin_subroutine(self):
+        pass
+    def end_args_subroutine(self):
+        pass
+    def push_num_subroutine(self):
+        pass
+    def pop_ss_subroutine(self):
+        pass
+
+
 
 parser = Parser("input.txt")
 parser.getTokens()
