@@ -739,7 +739,6 @@ class CodeGenerator:
 
     def push_ss_subroutine(self, token):
         self.ss.append(token)  # push token to stack
-        pass
 
     def declare_var_subroutine(self,):
         lexeme = self.ss.pop(-1)  # get variable name
@@ -748,15 +747,21 @@ class CodeGenerator:
         # todo 
 
     def param_info_subroutine(self,):
-
+        name = self.ss.pop()
+        # update symbol table with parameter info
         pass
     
     def close_func_subroutine(self,):
-        ret_addr = self.ss.pop(-1)
-        instruction = ['JP', ret_addr, None, None]
-        pass
+        # UPDATE symbol table todo
+        self.return_jump_subroutine()
+
     
     def declare_pointer_subroutine(self,):
+        lexeme = self.semantic_stack.pop()
+        type = self.ss.pop()
+        # semantic analysis for pointer
+        self.memory.get_db().add_data(lexeme, 'array')
+        # update symbol table with pointer info
         pass
     
     def declare_array_subroutine(self,):
@@ -798,11 +803,12 @@ class CodeGenerator:
 
     def while_label_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index())
-        pass
+
     def save_while_jump_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index())
         self.memory.get_pb().increament_index()
-        pass
+
+
     def end_while_subroutine(self,):
         idx = self.memory.get_pb().get_index()
         addr = int(self.ss.pop(-1))
@@ -811,30 +817,49 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instruction1, addr)
         self.memory.get_pb().add_instruction(instruction2)
 
-        pass
+
     def return_jump_subroutine(self):
         instruction = ["JP", self.ss.pop(-1), None, None] #???
         self.memory.get_pb().add_instruction(instruction)
 
-        pass
+
     def save_return_value_subroutine(self):
         ret_val = self.ss.pop(-1)
         # todo: where to save the return value
         instruction = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction)
-        pass
+
     def print_subroutine(self,):
         content = self.ss.pop(-1)
         instruction = ["PRINT", content, None, None]
-        pass
+
     def assign_subroutine(self,):
         instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        pass
+
 
 
     def array_address_subroutine(self):
-        pass
+        t1 = self.memory.get_tb().get_temp()
+        t2 = self.memory.get_tb().get_temp()
+        off = self.ss.pop(-1)  # get offset
+        base = self.ss.pop(-1)  # get base address
+
+        instra = ('MULT', '#4', off, base) # int as 4
+        self.memory.get_pb().add_instruction(instra)  # multiply instruction
+
+        addInstra = None
+        if str(base).startswith('@'):
+            t3 = self.memory.get_tb().get_temp()
+            instra = ('ASSIGN', base, t3, '')
+            self.memory.get_pb().add_instruction(instra)  # assign instruction
+
+            addInstra = ('ADD', t3, t1, t2)
+        else:
+            addInstra = ('ADD', '#' + str(base), t1, t2)
+
+        self.memory.get_pb.add_instruction(addInstra)  # add instruction
+        self.ss.push('@' + str(t2))
 
     def compare_subroutine(self,):
         # it may not be correct at all
@@ -868,23 +893,25 @@ class CodeGenerator:
         self.memory.get_tb().add_instruction(instruction)
         self.ss.append(R)
 
-        pass
+
     def pid_subroutine(self, token):
         p = 0 # find address ???
         self.ss.append(p)
-        pass
+
 
     def args_begin_subroutine(self):
         pass
+
     def end_args_subroutine(self):
         pass
 
     def push_num_subroutine(self, token):
         self.ss.append('#' + token)
-        pass
+
+
     def pop_ss_subroutine(self):
         self.ss.pop(-1)
-        pass
+
 
 
 
