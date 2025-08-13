@@ -291,7 +291,7 @@ StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
 ExpressionStmt -> Expression ; | break  ; | ;\n\
 SelectionStmt -> if ( Expression ) #save  Statement #jpf_save else   Statement #jp \n\
-IterationStmt -> while  ( Expression )  Statement  \n\
+IterationStmt -> while #while_label ( Expression ) #save_while_jp Statement #end_while \n\
 ReturnStmt -> return ReturnStmtPrime\n\
 ReturnStmtPrime -> ; #return_j| Expression #save_retval ;\n\
 Expression -> SimpleExpressionZegond |  #pid ID B  \n\
@@ -304,7 +304,7 @@ Relop ->  #push_sss < | #push_ss ==\n\
 AdditiveExpression -> Term D\n\
 AdditiveExpressionPrime -> TermPrime D\n\
 AdditiveExpressionZegond -> TermZegond D\n\
-D -> #push_ss Addop #pid Term #add_sub D | EPSILON\n\
+D -> #push_ss Addop Term #add_sub D | EPSILON\n\
 Addop ->  + |  -\n\
 Term -> SignedFactor G\n\
 TermPrime -> SignedFactorPrime G\n\
@@ -313,7 +313,7 @@ G -> * #pid SignedFactor #mult G | EPSILON\n\
 SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
-Factor -> ( Expression ) |  ID VarCallPrime | #push_num NUM\n\
+Factor -> ( Expression ) |  #pid ID VarCallPrime | #push_num NUM\n\
 VarCallPrime ->  ( #args_begin Args  ) #end_args | VarPrime\n\
 VarPrime -> [ Expression ] #arr_addr  | EPSILON\n\
 FactorPrime -> ( #args_begin Args ) #end_args| EPSILON\n\
@@ -833,7 +833,9 @@ class CodeGenerator:
         in2 = self.ss.pop(-1)  # get second operand
         instra = ["ASSIGN", in1, in2, None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        self.ss.append(in2)  # push second operand to stack
+        
+        #todo: check if it was needed or not (Matin thinks not)
+        # self.ss.append(in2)  # push second operand to stack
 
     # @correct
     def declare_array_subroutine(self,):
@@ -974,16 +976,21 @@ class CodeGenerator:
         # todo : > 1 break statement
 
     def while_label_subroutine(self,):
+        print(f'address: {self.memory.get_pb().get_index()}')
         self.ss.append(self.memory.get_pb().get_index())
 
     def save_while_jump_subroutine(self,):
+        print(f'address: {self.memory.get_pb().get_index()}')
         self.ss.append(self.memory.get_pb().get_index())
         self.memory.get_pb().increment_index()
 
 
     def end_while_subroutine(self,):
+        print(self.ss)
+
         idx = self.memory.get_pb().get_index()
         addr = int(self.ss.pop(-1))
+        print(f'addr {addr}')
         instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
         instruction2 = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction1, addr)
