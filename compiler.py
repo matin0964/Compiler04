@@ -274,12 +274,12 @@ def build_state_machines_from_string(grammar_str: str) -> dict:
 
 
 
-grammar_string = "Program -> DeclarationList $\n\
+grammar_string = "Program -> #start_program DeclarationList $\n\
 DeclarationList -> Declaration DeclarationList | EPSILON\n\
 Declaration -> DeclarationInitial DeclarationPrime\n\
 DeclarationInitial -> #push_ss TypeSpecifier #push_ss ID\n\
 DeclarationPrime -> FunDeclarationPrime | VarDeclarationPrime\n\
-VarDeclarationPrime -> ; #dec_var  | [ NUM ] ; \n\
+VarDeclarationPrime -> ; #dec_var  | [ #push_ss NUM ] #dec_arr ; \n\
 FunDeclarationPrime -> #dec_func ( Params ) #param_det CompoundStmt #cls_func \n\
 TypeSpecifier -> int | void\n\
 Params -> #push_ss int #push_ss ID ParamPrime ParamList | void\n\
@@ -295,7 +295,7 @@ IterationStmt -> while  ( Expression )  Statement  \n\
 ReturnStmt -> return ReturnStmtPrime\n\
 ReturnStmtPrime -> ; #return_j| Expression #save_retval ;\n\
 Expression -> SimpleExpressionZegond |  #pid ID B  \n\
-B -> = Expression #assign | [ Expression ]  H | SimpleExpressionPrime\n\
+B -> = Expression #assign | [ Expression  ] #arr_addr  H | SimpleExpressionPrime\n\
 H -> = Expression #assign  | G D C\n\
 SimpleExpressionZegond -> AdditiveExpressionZegond C\n\
 SimpleExpressionPrime -> AdditiveExpressionPrime C\n\
@@ -315,7 +315,7 @@ SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
 Factor -> ( Expression ) |  ID VarCallPrime | #push_num NUM\n\
 VarCallPrime ->  ( #args_begin Args  ) #end_args | VarPrime\n\
-VarPrime -> [ Expression ]  | EPSILON\n\
+VarPrime -> [ Expression ] #arr_addr  | EPSILON\n\
 FactorPrime -> ( #args_begin Args ) #end_args| EPSILON\n\
 FactorZegond -> ( Expression ) | #push_num NUM\n\
 Args -> ArgList | EPSILON\n\
@@ -665,6 +665,7 @@ class ActionSymbols(Enum):
     ARGS_BEGIN = "args_begin"
     END_ARGS = "end_args"
     PUSH_NUM = "push_num"
+    START_PROGRAM = "start_program"
     POP_SS = "pop_ss"
 
 class CodeGenerator:
@@ -684,9 +685,11 @@ class CodeGenerator:
         if a_symbol == "push_sss":
             a_symbol = "push_ss"
         
-        print(f"Action: {a_symbol}, stack: {self.ss}\n")
+        # print(f"Action: {a_symbol}, stack: {self.ss}\n")
         action_symbol = ActionSymbols(a_symbol)
         match action_symbol: 
+            case ActionSymbols.START_PROGRAM:
+                self.start_program_subroutine()
             case ActionSymbols.PUSH_SS:
                 self.push_ss_subroutine(token)
             case ActionSymbols.DECLARE_VAR:
@@ -747,7 +750,16 @@ class CodeGenerator:
                 self.push_num_subroutine(token)
             case ActionSymbols.POP_SS:
                 self.pop_ss_subroutine()
-        print(f"Stack after action: {self.ss}, and PB: {self.memory.get_pb().block}\n")
+        # print(f"Stack after action: {self.ss}, and PB: {self.memory.get_pb().block}\n")
+
+    # @correct
+    def start_program_subroutine(self):
+        self.memory.get_db().get_temp()  # initialize temp variable
+        instra = ("ASSIGN", "#4", 0, None)
+
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+        instra2 = ("JP", None, None, None)
+        self.memory.get_pb().add_instruction(instra2)  # add instruction to pb
 
     # @correct
     def push_ss_subroutine(self, token):
@@ -758,10 +770,9 @@ class CodeGenerator:
     def declare_var_subroutine(self, flag=True):
         lexeme = self.ss.pop(-1)  # get variable name
         type = self.ss.pop(-1)  # get type of variable
-        self.memory.get_db().get_temp()  # get a temp variable
         self.memory.get_db().add_data(lexeme, type)
         self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme) 
-        if flag: self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),''))  # add data to data block
+        if flag: self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),None))  # add data to data block
         # todo 
     # @correct
     def save_subroutine(self,):
@@ -820,6 +831,19 @@ class CodeGenerator:
         in2 = self.ss.pop(-1)  # get second operand
         instra = ["ASSIGN", in1, in2, None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+        self.ss.append(in2)  # push second operand to stack
+
+    # @correct
+    def declare_array_subroutine(self,):
+        size = self.ss.pop(-1)  # get variable name
+        lexeme = self.ss.pop(-1)  # get type of variable
+        type = self.ss.pop(-1)  # get type of variable
+        self.memory.get_db().add_data(lexeme, type, int(size))  # add data to data block
+        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme) 
+        self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),None)) 
+        # todo 
+        pass
+
 
     # @correct
     def args_begin_subroutine(self):
@@ -866,7 +890,8 @@ class CodeGenerator:
         self.current_function = lexeme
         self.all_scopes[lexeme] = self.current_scope  # add function to all scopes
         
-        # if lexeme == 'main':
+        if lexeme == 'main':
+            self.memory.get_pb().block[1] = ("JP",  self.memory.get_pb().get_index(), None, None)  # set main function address
             # todo: main function special case
 
         self.ss.append(lexeme)  # push function name to stack
@@ -878,6 +903,28 @@ class CodeGenerator:
         # update symbol table with parameter info
         pass
     
+    def array_address_subroutine(self):
+        t1 = self.memory.get_db().get_temp()
+        off = self.ss.pop(-1)  # get offset
+        base = self.ss[-1]  # get base address
+
+        instra = ('MULT', off,  '#4', t1) # int as 4
+        self.memory.get_pb().add_instruction(instra)  # multiply instruction
+
+        addInstra = None
+        if str(base).startswith('@'):
+            t3 = self.memory.get_db().get_temp()
+            self.memory.get_pb().add_instruction(instra)  # assign instruction
+
+            addInstra = ('ADD', base, t1, t1)
+        else:
+            addInstra = ('ADD', '#' + str(base), t1, t1)
+
+        self.memory.get_pb().add_instruction(addInstra)  # add instruction
+        self.ss.pop(-1)
+        self.ss.append('@' + str(t1))  # push address to stack
+        # self.ss.append('@' + str(t2))
+
 
     def declare_pointer_subroutine(self,):
         lexeme = self.ss.pop(-1)
@@ -911,13 +958,7 @@ class CodeGenerator:
         self.return_jump_subroutine()  # return jump instruction
 
 
-    def declare_array_subroutine(self,):
-        lexeme = self.ss.pop(-1)  # get type of variable
-        size = self.ss.pop(-1)  # get variable name
-        type = self.ss.pop(-1)  # get type of variable
-        self.memory.get_db().add_data(lexeme, type, int(size))  # add data to data block
-        # todo
-        pass
+    
     
     def save_scope_subroutine(self,):
         pass
@@ -957,28 +998,7 @@ class CodeGenerator:
 
 
 
-    def array_address_subroutine(self):
-        t1 = self.memory.get_db().get_temp()
-        t2 = self.memory.get_db().get_temp()
-        off = self.ss.pop(-1)  # get offset
-        base = self.ss.pop(-1)  # get base address
-
-        instra = ('MULT', '#4', off, base) # int as 4
-        self.memory.get_pb().add_instruction(instra)  # multiply instruction
-
-        addInstra = None
-        if str(base).startswith('@'):
-            t3 = self.memory.get_db().get_temp()
-            instra = ('ASSIGN', base, t3, '')
-            self.memory.get_pb().add_instruction(instra)  # assign instruction
-
-            addInstra = ('ADD', t3, t1, t2)
-        else:
-            addInstra = ('ADD', '#' + str(base), t1, t2)
-
-        self.memory.get_pb().add_instruction(addInstra)  # add instruction
-        self.ss.append('@' + str(t2))
-
+    
 
     def multiply_subroutine(self,):
         # todo type matching for semantic analysis
@@ -1009,10 +1029,15 @@ class CodeGenerator:
         self.ss.pop(-1)
 
     def write_outputs(self):
+        sortInstructions = {}
         with open(f'output.txt', 'w') as f:
-            sortInstructions = sorted(self.memory.get_pb().block.items())
-            for items in sortInstructions:
-                f.write(str(items[0]) + '\t' + str(items[1]) + '\n')
+            for num, quad in self.memory.get_pb().block.items():
+                formatted = [" " if x is None else x for x in quad]
+                sortInstructions[num] =  "(" + ", ".join(map(str, formatted)) + " )"
+
+            sortInstructions = sorted(sortInstructions.items())
+            lines = [str(items[0]) + '\t' + str(items[1]) for items in sortInstructions]
+            f.write("\n".join(lines))
       
 
 
@@ -1181,10 +1206,12 @@ class DataBlock:
         self.block = {}
 
     def add_data(self, lexeme, type, arr_size=1, isFunction=False):
+        # print(self.index)
         for i in range(arr_size):
-            data= DATA(lexeme, type, self.index, isFunction)
-            self.block[lexeme] =   self.base + self.index
+            data = DATA(lexeme, type, self.index, isFunction)
+            if arr_size == 1 or i == 0: self.block[lexeme] =   self.base + self.index
             self.index += 4 # assuming int size is 4 bytes; 
+
             if self.index > self.limit:
                 raise Exception("Data block limit exceeded")
         # symbol table todo  
@@ -1202,7 +1229,7 @@ class DataBlock:
 
 parser = Parser("input.txt")
 parser.getTokens()
-parser.write_outputs()
+# parser.write_outputs()
 parser.code_generator.write_outputs()
 
 # print(parser.state_machine["Relop"])
