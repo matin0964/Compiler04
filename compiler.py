@@ -687,72 +687,71 @@ class CodeGenerator:
     def code_gen(self, a_symbol, token=None):
         if a_symbol == "push_sss":
             a_symbol = "push_ss"
-        
+
         print(f"Action: {a_symbol}, stack: {self.ss}\n")
         action_symbol = ActionSymbols(a_symbol)
-        match action_symbol: 
-            case ActionSymbols.START_PROGRAM:
-                self.start_program_subroutine()
-            case ActionSymbols.PUSH_SS:
-                self.push_ss_subroutine(token)
-            case ActionSymbols.DECLARE_VAR:
-                self.declare_var_subroutine()
-            case ActionSymbols.DECLAARE_VAR_PARAM:
-                self.declare_var_subroutine(False)
-            case ActionSymbols.PARAM_INFO:
-                self.param_info_subroutine()
-            case ActionSymbols.DECLARE_FUNC:
-                self.declare_func_subroutine()
-            case ActionSymbols.DECLARE_POINTER:
-                self.declare_pointer_subroutine()
-            case ActionSymbols.DECLARE_ARRAY:
-                self.declare_array_subroutine()
-            case ActionSymbols.CLOSE_FUNC:
-                self.close_func_subroutine()
-            case ActionSymbols.SAVE_SCOPE:
-                self.save_scope_subroutine()
-            case ActionSymbols.BACK_SCOPE:
-                self.back_scope_subroutine()
-            case ActionSymbols.SAVE_BREAK:
-                self.save_break_subroutine()
-            case ActionSymbols.JUMP_IF_FALSE:
-                self.jump_if_false_subroutine()
-            case ActionSymbols.JUMP:
-                self.jump_subroutine()
-            case ActionSymbols.SAVE:
-                self.save_subroutine()
-            case ActionSymbols.WHILE_LABEL:
-                self.while_label_subroutine()
-            case ActionSymbols.SAVE_WHILE_JUMP:
-                self.save_while_jump_subroutine()
-            case ActionSymbols.END_WHILE:
-                self.end_while_subroutine()
-            case ActionSymbols.RETURN_JUMP:
-                self.return_jump_subroutine()
-            case ActionSymbols.SAVE_RETURNVALUE:
-                self.save_return_value_subroutine()
-            case ActionSymbols.PRINT:
-                self.print_subroutine()
-            case ActionSymbols.ASSIGN:
-                self.assign_subroutine()
-            case ActionSymbols.ARRAY_ADDRESS:
-                self.array_address_subroutine()
-            case ActionSymbols.COMPARE:
-                self.compare_subroutine()
-            case ActionSymbols.MULTIPLY:
-                self.multiply_subroutine()
-            case ActionSymbols.ADD_SUB:
-                self.add_sub_subroutine(a_symbol)
-            case ActionSymbols.PID:
-                self.pid_subroutine(token)
-            case ActionSymbols.ARGS_BEGIN:
-                self.args_begin_subroutine()
-            case ActionSymbols.END_ARGS:
-                self.end_args_subroutine()
-            case ActionSymbols.PUSH_NUM:
-                self.push_num_subroutine(token)
-            case ActionSymbols.POP_SS:
-                self.pop_ss_subroutine()
+        if action_symbol == ActionSymbols.START_PROGRAM:
+            self.start_program_subroutine()
+        elif action_symbol == ActionSymbols.PUSH_SS:
+            self.push_ss_subroutine(token)
+        elif action_symbol == ActionSymbols.DECLARE_VAR:
+            self.declare_var_subroutine()
+        elif action_symbol == ActionSymbols.DECLAARE_VAR_PARAM:
+            self.declare_var_subroutine(False)
+        elif action_symbol == ActionSymbols.PARAM_INFO:
+            self.param_info_subroutine()
+        elif action_symbol == ActionSymbols.DECLARE_FUNC:
+            self.declare_func_subroutine()
+        elif action_symbol == ActionSymbols.DECLARE_POINTER:
+            self.declare_pointer_subroutine()
+        elif action_symbol == ActionSymbols.DECLARE_ARRAY:
+            self.declare_array_subroutine()
+        elif action_symbol == ActionSymbols.CLOSE_FUNC:
+            self.close_func_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_SCOPE:
+            self.save_scope_subroutine()
+        elif action_symbol == ActionSymbols.BACK_SCOPE:
+            self.back_scope_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_BREAK:
+            self.save_break_subroutine()
+        elif action_symbol == ActionSymbols.JUMP_IF_FALSE:
+            self.jump_if_false_subroutine()
+        elif action_symbol == ActionSymbols.JUMP:
+            self.jump_subroutine()
+        elif action_symbol == ActionSymbols.SAVE:
+            self.save_subroutine()
+        elif action_symbol == ActionSymbols.WHILE_LABEL:
+            self.while_label_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_WHILE_JUMP:
+            self.save_while_jump_subroutine()
+        elif action_symbol == ActionSymbols.END_WHILE:
+            self.end_while_subroutine()
+        elif action_symbol == ActionSymbols.RETURN_JUMP:
+            self.return_jump_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_RETURNVALUE:
+            self.save_return_value_subroutine()
+        elif action_symbol == ActionSymbols.PRINT:
+            self.print_subroutine()
+        elif action_symbol == ActionSymbols.ASSIGN:
+            self.assign_subroutine()
+        elif action_symbol == ActionSymbols.ARRAY_ADDRESS:
+            self.array_address_subroutine()
+        elif action_symbol == ActionSymbols.COMPARE:
+            self.compare_subroutine()
+        elif action_symbol == ActionSymbols.MULTIPLY:
+            self.multiply_subroutine()
+        elif action_symbol == ActionSymbols.ADD_SUB:
+            self.add_sub_subroutine(a_symbol)
+        elif action_symbol == ActionSymbols.PID:
+            self.pid_subroutine(token)
+        elif action_symbol == ActionSymbols.ARGS_BEGIN:
+            self.args_begin_subroutine()
+        elif action_symbol == ActionSymbols.END_ARGS:
+            self.end_args_subroutine()
+        elif action_symbol == ActionSymbols.PUSH_NUM:
+            self.push_num_subroutine(token)
+        elif action_symbol == ActionSymbols.POP_SS:
+            self.pop_ss_subroutine()
         # print(f"Stack after action: {self.ss}, and PB: {self.memory.get_pb().block}\n")
 
     # @correct
