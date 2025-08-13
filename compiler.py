@@ -289,7 +289,7 @@ ParamPrime -> [ ] #dec_pnt | EPSILON #dec_varParam \n\
 CompoundStmt -> {  DeclarationList StatementList  }\n\
 StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
-ExpressionStmt -> Expression ; | break  ; | ;\n\
+ExpressionStmt -> Expression ; | break #save_b ; | ;\n\
 SelectionStmt -> if ( Expression ) #save  Statement #jpf_save else   Statement #jp \n\
 IterationStmt -> while  ( Expression )  Statement  \n\
 ReturnStmt -> return ReturnStmtPrime\n\
@@ -678,7 +678,9 @@ class CodeGenerator:
         self.current_scope = self.global_scope
         self.current_function = None  # current function being processed
         self.all_scopes = {'global': self.global_scope}  # dictionary of scopes
+        self.loops = []
 
+        self.add_break = True
 
 
     def code_gen(self, a_symbol, token=None):
@@ -834,7 +836,13 @@ class CodeGenerator:
         in2 = self.ss.pop(-1)  # get second operand
         instra = ["ASSIGN", in1, in2, None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+<<<<<<< HEAD
         self.ss.append(in2)  # push second operand to stack
+=======
+
+        #todo: check if it was needed or not (Matin thinks not)
+        # self.ss.append(in2)  # push second operand to stack
+>>>>>>> 7695de7097c0c255d1a49bcba36f33f7134e1f83
 
     # @correct
     def declare_array_subroutine(self,):
@@ -988,6 +996,7 @@ class CodeGenerator:
     # @correct
     def save_return_value_subroutine(self):
         ret_val = self.ss.pop(-1)
+<<<<<<< HEAD
         # print(f"Return value: {ret_val}")
         instra = ("ASSIGN", ret_val, self.current_scope["RET"], None)  # assign instruction
         bagh = self.current_scope["RA"]
@@ -995,6 +1004,15 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.memory.get_pb().add_instruction(instr2)  # add instruction to pb   
     
+=======
+        t = self.memory.get_db().get_temp()
+        instra = ("ASSIGN", '@' + str(self.ss.pop(-1)), t, '')  # assign instruction
+        instra2 = ["ASSIGN", ret_val, '@' + str(t), None]
+        self.memory.get_pb().add_instruction(instra)
+        self.memory.get_pb().add_instruction(instra2)  # add instruction to pb
+        
+        self.return_jump_subroutine()  # return jump instruction
+>>>>>>> 7695de7097c0c255d1a49bcba36f33f7134e1f83
 
     def save_scope_subroutine(self,):
         pass
@@ -1003,12 +1021,22 @@ class CodeGenerator:
         pass
 
     def save_break_subroutine(self,):
-        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        idx = self.memory.get_pb().get_index()
         self.memory.get_pb().increment_index()  # increment pb index
+        if self.add_break:
+            self.loops[-1]["breaks"].append(idx)
         # todo : > 1 break statement
 
     def while_label_subroutine(self,):
+<<<<<<< HEAD
         self.ss.append(self.memory.get_pb().get_index())
+=======
+        print(f'address: {self.memory.get_pb().get_index()}')
+        idx = self.memory.get_pb().get_index()
+        if self.add_break:
+            self.loops.append({"start_addr": idx, "breaks": []})
+        self.ss.append(idx)
+>>>>>>> 7695de7097c0c255d1a49bcba36f33f7134e1f83
 
     def save_while_jump_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index())
@@ -1016,6 +1044,18 @@ class CodeGenerator:
 
 
     def end_while_subroutine(self,):
+<<<<<<< HEAD
+=======
+        print(self.ss)
+        addr = self.memory.get_pb().get_index()
+        if self.add_break:
+            print(f"Breaks: {self.loops[-1]['breaks']}")
+            for b in self.loops[-1]['breaks']:
+                instruction = ['JP', addr + 1, None, None]
+                self.memory.get_pb().add_instruction(instruction, b)
+
+            self.loops.pop(-1)
+>>>>>>> 7695de7097c0c255d1a49bcba36f33f7134e1f83
         idx = self.memory.get_pb().get_index()
         addr = int(self.ss.pop(-1))
         instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
