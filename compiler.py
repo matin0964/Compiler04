@@ -280,12 +280,12 @@ Declaration -> DeclarationInitial DeclarationPrime\n\
 DeclarationInitial -> #push_ss TypeSpecifier #push_ss ID\n\
 DeclarationPrime -> FunDeclarationPrime | VarDeclarationPrime\n\
 VarDeclarationPrime -> ; #dec_var  | [ NUM ] ; \n\
-FunDeclarationPrime -> ( Params )  CompoundStmt \n\
+FunDeclarationPrime -> #dec_func ( Params ) #param_det CompoundStmt #cls_func \n\
 TypeSpecifier -> int | void\n\
-Params -> #push_ss int ID ParamPrime ParamList | void\n\
+Params -> #push_ss int #push_ss ID ParamPrime ParamList | void\n\
 ParamList -> , Param ParamList | EPSILON\n\
 Param -> DeclarationInitial ParamPrime\n\
-ParamPrime -> [ ]  | EPSILON  \n\
+ParamPrime -> [ ] #dec_pnt | EPSILON #dec_varParam \n\
 CompoundStmt -> {  DeclarationList StatementList  }\n\
 StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
@@ -293,7 +293,7 @@ ExpressionStmt -> Expression ; | break  ; | ;\n\
 SelectionStmt -> if ( Expression ) #save  Statement #jpf_save else   Statement #jp \n\
 IterationStmt -> while  ( Expression )  Statement  \n\
 ReturnStmt -> return ReturnStmtPrime\n\
-ReturnStmtPrime ->  ; | Expression #save_retval ;\n\
+ReturnStmtPrime -> ; #return_j| Expression #save_retval ;\n\
 Expression -> SimpleExpressionZegond |  #pid ID B  \n\
 B -> = Expression #assign | [ Expression ]  H | SimpleExpressionPrime\n\
 H -> = Expression #assign  | G D C\n\
@@ -641,6 +641,8 @@ class ActionSymbols(Enum):
     CLOSE_FUNC = "cls_func"
     DECLARE_POINTER = "dec_pnt"
     DECLARE_VAR = "dec_var"
+    DECLAARE_VAR_PARAM = "dec_varParam"
+    DECLARE_FUNC = "dec_func"
     DECLARE_ARRAY = "dec_arr"
     SAVE_SCOPE = "save_scope"
     BACK_SCOPE = "back_scope"
@@ -668,9 +670,13 @@ class ActionSymbols(Enum):
 class CodeGenerator:
     def __init__(self):
         self.code = []
-        self.memory = Memory(ProgramBlock(0,500), DataBlock(500, 10000), TempBlock(500, 10000))
+        self.memory = Memory(ProgramBlock(0,500), DataBlock(500, 10000))
         self.ss = []
         self.symbol_table = SymbolTable()
+        self.global_scope = {}
+        self.current_scope = self.global_scope
+        self.current_function = None  # current function being processed
+        self.all_scopes = {'global': self.global_scope}  # dictionary of scopes
 
 
 
@@ -678,21 +684,25 @@ class CodeGenerator:
         if a_symbol == "push_sss":
             a_symbol = "push_ss"
         
-        # print(f"Action: {a_symbol}, stack: {self.ss}")
+        print(f"Action: {a_symbol}, stack: {self.ss}\n")
         action_symbol = ActionSymbols(a_symbol)
         match action_symbol: 
             case ActionSymbols.PUSH_SS:
                 self.push_ss_subroutine(token)
             case ActionSymbols.DECLARE_VAR:
                 self.declare_var_subroutine()
+            case ActionSymbols.DECLAARE_VAR_PARAM:
+                self.declare_var_subroutine(False)
             case ActionSymbols.PARAM_INFO:
                 self.param_info_subroutine()
-            case ActionSymbols.CLOSE_FUNC:
-                self.close_func_subroutine()
+            case ActionSymbols.DECLARE_FUNC:
+                self.declare_func_subroutine()
             case ActionSymbols.DECLARE_POINTER:
                 self.declare_pointer_subroutine()
             case ActionSymbols.DECLARE_ARRAY:
                 self.declare_array_subroutine()
+            case ActionSymbols.CLOSE_FUNC:
+                self.close_func_subroutine()
             case ActionSymbols.SAVE_SCOPE:
                 self.save_scope_subroutine()
             case ActionSymbols.BACK_SCOPE:
@@ -737,7 +747,7 @@ class CodeGenerator:
                 self.push_num_subroutine(token)
             case ActionSymbols.POP_SS:
                 self.pop_ss_subroutine()
-
+        print(f"Stack after action: {self.ss}, and PB: {self.memory.get_pb().block}\n")
 
     # @correct
     def push_ss_subroutine(self, token):
@@ -745,14 +755,14 @@ class CodeGenerator:
         self.ss.append(token)  # push token to stack
 
     # @correct
-    def declare_var_subroutine(self,):
+    def declare_var_subroutine(self, flag=True):
         lexeme = self.ss.pop(-1)  # get variable name
         type = self.ss.pop(-1)  # get type of variable
-        self.memory.get_tb().get_temp()  # get a temp variable
+        self.memory.get_db().get_temp()  # get a temp variable
         self.memory.get_db().add_data(lexeme, type)
-        self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),''))  # add data to data block
+        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme) 
+        if flag: self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),''))  # add data to data block
         # todo 
-
     # @correct
     def save_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index()) # current line of pb
@@ -780,7 +790,7 @@ class CodeGenerator:
             self.ss.append('PRINT')
             return
         
-        p = self.memory.get_db().get_data(token)  # get data from data block
+        p = self.current_scope[token]  # get data from data block
         # print(f"PID: {token}, data: {p}")
         self.ss.append(p)
 
@@ -791,7 +801,7 @@ class CodeGenerator:
 
     # @correct
     def compare_subroutine(self,):
-        t = self.memory.get_tb().get_temp()  # get a temp variable 
+        t = self.memory.get_db().get_temp()  # get a temp variable 
         opr2 = self.ss.pop(-1)  # get second operand
         op = self.ss.pop(-1) # get operator
         opr1 = self.ss.pop(-1) # get first operand
@@ -840,26 +850,67 @@ class CodeGenerator:
             return
         # todo of calling function 
 
+    # @correct
+    def close_func_subroutine(self,):
+        self.current_scope = self.all_scopes['global']  # reset current scope to global
+        self.current_function = None  # reset current function
+        # self.return_jump_subroutine()
 
+    # @correct
+    def declare_func_subroutine(self,):
+        lexeme = self.ss.pop(-1)
+        data_type = self.ss.pop(-1)  # get type of function
+        self.current_scope = {}
+        self.memory.get_db().add_data(lexeme, data_type, 1, True)  # add function to data block
+        self.global_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add function to global scope
+        self.current_function = lexeme
+        self.all_scopes[lexeme] = self.current_scope  # add function to all scopes
+        
+        # if lexeme == 'main':
+            # todo: main function special case
+
+        self.ss.append(lexeme)  # push function name to stack
+
+    # @correct
     def param_info_subroutine(self,):
-        return
-        name = self.ss.pop()
+        name = self.ss.pop(-1)
+        # semantic analysis for parameter
         # update symbol table with parameter info
         pass
     
-    def close_func_subroutine(self,):
-        # UPDATE symbol table todo
-        self.return_jump_subroutine()
 
-    
     def declare_pointer_subroutine(self,):
-        lexeme = self.ss.pop()
-        type = self.ss.pop()
+        lexeme = self.ss.pop(-1)
+        self.ss.pop(-1)
         # semantic analysis for pointer
         self.memory.get_db().add_data(lexeme, 'array')
         # update symbol table with pointer info
+        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add data to current scope
+
         pass
     
+
+    def return_jump_subroutine(self):
+        t = self.memory.get_db().get_temp()
+        instra1 = ("ADD", self.ss.pop(-1), f'#{4}', t)  # add instruction
+        instra2 = ("ASSIGN", '@' + str(t), t, '')  # assign instruction
+        instra3 = ("JP", '@' + str(t), None, None)  # jump instruction
+      
+        self.memory.get_pb().add_instruction(instra1)
+        self.memory.get_pb().add_instruction(instra2)
+        self.memory.get_pb().add_instruction(instra3)
+
+    def save_return_value_subroutine(self):
+        ret_val = self.ss.pop(-1)
+        t = self.memory.get_db().get_temp()
+        instra = ("ASSIGN", '@' + str(self.ss.pop(-1)), t, '')  # assign instruction
+        instra2 = ["ASSIGN", ret_val, '@' + str(t), None]
+        self.memory.get_pb().add_instruction(instra)
+        self.memory.get_pb().add_instruction(instra2)  # add instruction to pb
+        
+        self.return_jump_subroutine()  # return jump instruction
+
+
     def declare_array_subroutine(self,):
         lexeme = self.ss.pop(-1)  # get type of variable
         size = self.ss.pop(-1)  # get variable name
@@ -896,19 +947,7 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instruction2)
 
 
-    def return_jump_subroutine(self):
-        return
-        instruction = ["JP", self.ss.pop(-1), None, None] #???
-        self.memory.get_pb().add_instruction(instruction)
-
-
-    def save_return_value_subroutine(self):
-        return
-        ret_val = self.ss.pop(-1)
-        # todo: where to save the return value
-        instruction = ["JP", self.ss.pop(-1), None, None]
-        self.memory.get_pb().add_instruction(instruction)
-
+   
     def print_subroutine(self,):
         if len(self.ss) > 0: content = self.ss.pop(-1)
         content = 0; # todo
@@ -919,8 +958,8 @@ class CodeGenerator:
 
 
     def array_address_subroutine(self):
-        t1 = self.memory.get_tb().get_temp()
-        t2 = self.memory.get_tb().get_temp()
+        t1 = self.memory.get_db().get_temp()
+        t2 = self.memory.get_db().get_temp()
         off = self.ss.pop(-1)  # get offset
         base = self.ss.pop(-1)  # get base address
 
@@ -929,7 +968,7 @@ class CodeGenerator:
 
         addInstra = None
         if str(base).startswith('@'):
-            t3 = self.memory.get_tb().get_temp()
+            t3 = self.memory.get_db().get_temp()
             instra = ('ASSIGN', base, t3, '')
             self.memory.get_pb().add_instruction(instra)  # assign instruction
 
@@ -943,7 +982,7 @@ class CodeGenerator:
 
     def multiply_subroutine(self,):
         # todo type matching for semantic analysis
-        t = self.memory.get_tb().get_temp()  # get temp
+        t = self.memory.get_db().get_temp()  # get temp
         instra = ["MULT",self.ss.pop(-1), self.ss.pop(-1), t]  # multiply instruction]
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.ss.append(t)  # push temp to stack
@@ -953,7 +992,7 @@ class CodeGenerator:
         op1 = self.ss.pop(-1)
         operation = self.ss.pop(-1)
         op2 = self.ss.pop(-1)
-        R = self.memory.get_tb().get_temp()
+        R = self.memory.get_db().get_temp()
         op = "ADD" if operation == '+' else "SUB"
         instruction = [op, op2, op1, R]
         self.memory.get_pb().add_instruction(instruction)
@@ -1081,32 +1120,17 @@ class SymbolTable:
     #   pass
 
 class Memory:
-    def __init__(self, program_block, data_block, temp_block):
+    def __init__(self, program_block, data_block):
         self.pb = program_block
         self.db = data_block
-        self.tb = temp_block # todo
 
-    # def allocate(self, var_name, value):
-    #     if self.scope not in self.memory:
-    #         self.memory[self.scope] = {}
-    #     self.memory[self.scope][var_name] = value
-
-    # def get(self, var_name):
-    #     for scope in range(self.scope, -1, -1):
-    #         if scope in self.memory and var_name in self.memory[scope]:
-    #             return self.memory[scope][var_name]
-    #     return None
-
-    # def set_scope(self, scope):
-    #     self.scope = scope
     def get_pb(self):
         return self.pb
     
     def get_db(self):
         return self.db
     
-    def get_tb(self):
-        return self.tb
+
 
 class ProgramBlock:
     def __init__(self, base, limit):
@@ -1150,15 +1174,15 @@ class DATA:
         
 
 class DataBlock:
-    def __init__(self, base, limit):
+    def __init__(self, base, limit, isFunction=False):
         self.index = 0
         self.base = base
         self.limit = limit
         self.block = {}
 
-    def add_data(self, lexeme, type, arr_size=1):
+    def add_data(self, lexeme, type, arr_size=1, isFunction=False):
         for i in range(arr_size):
-            data= DATA(lexeme, type, self.index)
+            data= DATA(lexeme, type, self.index, isFunction)
             self.block[lexeme] =   self.base + self.index
             self.index += 4 # assuming int size is 4 bytes; 
             if self.index > self.limit:
@@ -1167,30 +1191,14 @@ class DataBlock:
     def get_data(self, lexeme):
         return self.block[lexeme]
         
-    def __repr__(self):
-        return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
-
-class TempBlock:
-    def __init__(self, base, limit):
-        self.index = 0
-        self.base = base
-        self.limit = limit
-        self.temp = []
-
-    def add_temp(self, temp):
-        if self.index < self.limit:
-            self.temp.append(temp)
-            self.index += 1
-        else:
-            raise Exception("Temporary block limit exceeded")
-
     def get_temp(self):
         idx = self.index
         self.index += 4
         return idx + self.base
-
+    
     def __repr__(self):
-        return f"TempBlock(base={self.base}, limit={self.limit}, temp={self.temp})"
+        return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
+
 
 parser = Parser("input.txt")
 parser.getTokens()
