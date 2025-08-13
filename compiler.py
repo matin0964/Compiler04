@@ -624,10 +624,10 @@ class Parser:
                 if len(self.stateList) == 0: return 
 
     def write_outputs(self):
-        with open(f'parse_tree.txt', 'w') as f:
+        with open(f'parse_tree.txt', 'w', encoding="utf-8") as f:
             for line in self.parse_tree:
                 f.write(line + '\n')
-        with open(f'syntax_errors.txt', 'w') as f: 
+        with open(f'syntax_errors.txt', 'w', encoding="utf-8") as f:
             if (len(self.syntax_erros) == 0): 
                 f.write("There is no syntax error.")
             else:
@@ -679,6 +679,13 @@ class CodeGenerator:
         self.all_scopes = {'global': self.global_scope}  # dictionary of scopes
 
 
+        self.function_return_addrs = {}
+        self.function_return_value_addrs = {}
+        self.function_args_start_addrs = {}
+        self.jump_to_main_instruction_addr = None
+        self.debug = True
+
+        self.start_subroutine()
 
     def code_gen(self, a_symbol, token=None):
         if a_symbol == "push_sss":
@@ -686,6 +693,7 @@ class CodeGenerator:
         
         print(f"Action: {a_symbol}, stack: {self.ss}\n")
         action_symbol = ActionSymbols(a_symbol)
+
         match action_symbol: 
             case ActionSymbols.PUSH_SS:
                 self.push_ss_subroutine(token)
@@ -748,6 +756,20 @@ class CodeGenerator:
             case ActionSymbols.POP_SS:
                 self.pop_ss_subroutine()
         print(f"Stack after action: {self.ss}, and PB: {self.memory.get_pb().block}\n")
+
+    # todo: figure out where to use this (not in the construction of code_gen)
+    def start_subroutine(self):
+        instruction = ['ASSIGN', '#4', 0, None]
+        self.memory.get_pb().add_instruction(instruction)
+
+        # push the address of instruction (JP, main, , )
+
+        self.jump_to_main_instruction_addr = self.memory.get_pb().get_index()
+
+        self.memory.get_pb().increment_index()
+
+        if self.debug:
+            print(f'pb index: {self.memory.get_pb().get_index()}')
 
     # @correct
     def push_ss_subroutine(self, token):
@@ -858,6 +880,9 @@ class CodeGenerator:
 
     # @correct
     def declare_func_subroutine(self,):
+        if self.debug:
+            print("Entered function declaration subroutine")
+
         lexeme = self.ss.pop(-1)
         data_type = self.ss.pop(-1)  # get type of function
         self.current_scope = {}
@@ -865,9 +890,19 @@ class CodeGenerator:
         self.global_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add function to global scope
         self.current_function = lexeme
         self.all_scopes[lexeme] = self.current_scope  # add function to all scopes
-        
-        # if lexeme == 'main':
+
+        addr = 0
+
+        self.function_return_addrs [lexeme] = addr
+        self.function_return_value_addrs [lexeme] = addr + 4
+        self.function_args_start_addrs [lexeme] = addr + 8
+
+
+        if lexeme == 'main':
             # todo: main function special case
+            current_line = self.memory.get_pb().get_index()
+            instruction = ["JP", current_line, None, None]
+            self.memory.get_pb().add_instruction(instruction, self.jump_to_main_instruction_addr)
 
         self.ss.append(lexeme)  # push function name to stack
 
@@ -912,6 +947,8 @@ class CodeGenerator:
 
 
     def declare_array_subroutine(self,):
+        if self.debug:
+            print("Entered declare_array_subroutine")
         lexeme = self.ss.pop(-1)  # get type of variable
         size = self.ss.pop(-1)  # get variable name
         type = self.ss.pop(-1)  # get type of variable
@@ -958,8 +995,12 @@ class CodeGenerator:
 
 
     def array_address_subroutine(self):
+        if self.debug:
+            print("Entered array_address_subroutine")
         t1 = self.memory.get_db().get_temp()
         t2 = self.memory.get_db().get_temp()
+        if self.debug:
+            print(f"t1: {self.memory.get_db().index}")
         off = self.ss.pop(-1)  # get offset
         base = self.ss.pop(-1)  # get base address
 
@@ -1147,7 +1188,7 @@ class ProgramBlock:
         else:
             self.block[address] = instruction
 
-         # todo
+         # todop
 
 
     def get_index(self):
@@ -1195,6 +1236,8 @@ class DataBlock:
         idx = self.index
         self.index += 4
         return idx + self.base
+
+
     
     def __repr__(self):
         return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
