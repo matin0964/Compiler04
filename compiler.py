@@ -688,7 +688,7 @@ class CodeGenerator:
         if a_symbol == "push_sss":
             a_symbol = "push_ss"
         
-        # print(f"Action: {a_symbol}, stack: {self.ss}\n")
+        print(f"Action: {a_symbol}, stack: {self.ss}\n")
         action_symbol = ActionSymbols(a_symbol)
         match action_symbol: 
             case ActionSymbols.START_PROGRAM:
@@ -837,7 +837,7 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
 
         #todo: check if it was needed or not (Matin thinks not)
-        # self.ss.append(in2)  # push second operand to stack
+        self.ss.append(in2)  # push second operand to stack
 
     # @correct
     def declare_array_subroutine(self,):
@@ -981,6 +981,7 @@ class CodeGenerator:
         idx = self.memory.get_pb().get_index()
         if self.add_break:
             self.loops.append({"start_addr": idx, "breaks": []})
+        self.ss.append('While')
         self.ss.append(idx)
 
     def save_while_jump_subroutine(self,):
@@ -1000,6 +1001,11 @@ class CodeGenerator:
 
             self.loops.pop(-1)
         idx = self.memory.get_pb().get_index()
+
+        while(self.ss[-4] != 'While'):
+            self.ss.pop(-1)
+
+
         addr = int(self.ss.pop(-1))
         print(f'addr {addr}')
         instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
@@ -1007,7 +1013,7 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instruction1, addr)
         self.memory.get_pb().add_instruction(instruction2)
 
-
+        self.ss.pop(-1)
    
     def print_subroutine(self,):
         if len(self.ss) > 0: content = self.ss.pop(-1)
