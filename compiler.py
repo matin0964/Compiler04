@@ -304,12 +304,12 @@ Relop ->  #push_sss < | #push_ss ==\n\
 AdditiveExpression -> Term D\n\
 AdditiveExpressionPrime -> TermPrime D\n\
 AdditiveExpressionZegond -> TermZegond D\n\
-D -> Addop Term  D | EPSILON\n\
+D -> #push_ss Addop #pid Term #add_sub D | EPSILON\n\
 Addop ->  + |  -\n\
 Term -> SignedFactor G\n\
 TermPrime -> SignedFactorPrime G\n\
 TermZegond -> SignedFactorZegond G\n\
-G -> * SignedFactor  G | EPSILON\n\
+G -> * #pid SignedFactor #mult G | EPSILON\n\
 SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
@@ -660,6 +660,7 @@ class ActionSymbols(Enum):
     ARRAY_ADDRESS = "arr_addr"
     COMPARE = "comp"
     MULTIPLY = "mult"
+    # SAVE_OP = "save_op"
     ADD_SUB = "add_sub"
     PID = "pid"
     ARGS_BEGIN = "args_begin"
@@ -763,6 +764,7 @@ class CodeGenerator:
 
     # @correct
     def push_ss_subroutine(self, token):
+        print(f"Entered push_ss with token: {token}")
         # print(token)
         self.ss.append(token)  # push token to stack
 
@@ -1006,15 +1008,16 @@ class CodeGenerator:
         instra = ["MULT",self.ss.pop(-1), self.ss.pop(-1), t]  # multiply instruction]
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.ss.append(t)  # push temp to stack
-        
+        print(f'stack: {self.ss}')
 
     def add_sub_subroutine(self, action):
-        op1 = self.ss.pop(-1)
-        operation = self.ss.pop(-1)
         op2 = self.ss.pop(-1)
+        operation = self.ss.pop(-1)
+        op1 = self.ss.pop(-1)
+        # print(operation, op2, op1)
         R = self.memory.get_db().get_temp()
         op = "ADD" if operation == '+' else "SUB"
-        instruction = [op, op2, op1, R]
+        instruction = [op, op1, op2, R]
         self.memory.get_pb().add_instruction(instruction)
         self.ss.append(R)
 
