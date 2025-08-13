@@ -314,9 +314,9 @@ SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
 Factor -> ( Expression ) |  ID VarCallPrime | #push_num NUM\n\
-VarCallPrime ->  ( Args )  | VarPrime\n\
+VarCallPrime ->  ( #args_begin Args  ) #end_args | VarPrime\n\
 VarPrime -> [ Expression ]  | EPSILON\n\
-FactorPrime -> ( Args ) | EPSILON\n\
+FactorPrime -> ( #args_begin Args ) #end_args| EPSILON\n\
 FactorZegond -> ( Expression ) | #push_num NUM\n\
 Args -> ArgList | EPSILON\n\
 ArgList -> Expression ArgListPrime\n\
@@ -776,6 +776,10 @@ class CodeGenerator:
 
     # @correct
     def pid_subroutine(self, token):
+        if token == 'output':
+            self.ss.append('PRINT')
+            return
+        
         p = self.memory.get_db().get_data(token)  # get data from data block
         # print(f"PID: {token}, data: {p}")
         self.ss.append(p)
@@ -800,10 +804,42 @@ class CodeGenerator:
         self.ss.append(t)
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
 
-
+    # @correct
     def assign_subroutine(self,):
-        instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
+        in1 = self.ss.pop(-1)  # get first operand
+        in2 = self.ss.pop(-1)  # get second operand
+        instra = ["ASSIGN", in1, in2, None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+
+    # @correct
+    def args_begin_subroutine(self):
+        if self.ss and self.ss[-1] == 'PRINT':
+            return 
+        else: 
+            self.ss.append("ARGUMENTS")
+
+    # @correct
+    def end_args_subroutine(self):
+        args = []
+        if 'ARGUMENTS' in self.ss: 
+            while self.ss[-1] != 'ARGUMENTS':
+                arg = self.ss.pop(-1)  # pop arguments from stack
+                args.append(arg)
+
+        elif 'PRINT' in self.ss:
+             while self.ss[-1] != 'PRINT':
+                arg = self.ss.pop(-1)  # pop arguments from stack
+                args.append(arg)
+
+        args = args[::-1]  # reverse the order of arguments
+        argType = self.ss.pop(-1)  # pop 'ARGUMENTS' or 'PRINT' from stack
+
+        if argType == 'PRINT':
+            instra = ["PRINT", args[0], None, None]  # print instruction
+            self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+            return
+        # todo of calling function 
+
 
     def param_info_subroutine(self,):
         return
@@ -925,12 +961,7 @@ class CodeGenerator:
 
 
 
-    def args_begin_subroutine(self):
-
-        pass
-
-    def end_args_subroutine(self):
-        pass
+   
 
 
 
