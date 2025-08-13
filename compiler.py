@@ -279,43 +279,43 @@ DeclarationList -> Declaration DeclarationList | EPSILON\n\
 Declaration -> DeclarationInitial DeclarationPrime\n\
 DeclarationInitial -> #push_ss TypeSpecifier #push_ss ID\n\
 DeclarationPrime -> FunDeclarationPrime | VarDeclarationPrime\n\
-VarDeclarationPrime -> ; #dec_var | [ #push_ss NUM ] ; #dec_arr\n\
-FunDeclarationPrime -> ( Params ) #param_det CompoundStmt #cls_func\n\
+VarDeclarationPrime -> ; #dec_var  | [ NUM ] ; \n\
+FunDeclarationPrime -> ( Params )  CompoundStmt \n\
 TypeSpecifier -> int | void\n\
-Params -> #push_ss int #push_ss ID ParamPrime ParamList | void\n\
+Params -> #push_ss int ID ParamPrime ParamList | void\n\
 ParamList -> , Param ParamList | EPSILON\n\
 Param -> DeclarationInitial ParamPrime\n\
-ParamPrime -> [ ] #dec_pnt | EPSILON #dec_var \n\
-CompoundStmt -> { #save_scope DeclarationList StatementList #back_scope }\n\
+ParamPrime -> [ ]  | EPSILON  \n\
+CompoundStmt -> {  DeclarationList StatementList  }\n\
 StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
-ExpressionStmt -> Expression ; | break #save_b ; | ;\n\
-SelectionStmt -> if ( Expression ) #save Statement else #jpf_save Statement #jp\n\
-IterationStmt -> while #while_label ( Expression ) #save_while_jp Statement #end_while \n\
+ExpressionStmt -> Expression ; | break  ; | ;\n\
+SelectionStmt -> if ( Expression ) #save  Statement #jpf_save else   Statement #jp \n\
+IterationStmt -> while  ( Expression )  Statement  \n\
 ReturnStmt -> return ReturnStmtPrime\n\
-ReturnStmtPrime -> #return_j ; | Expression #save_retval ;\n\
-Expression -> SimpleExpressionZegond | #pid ID B #print \n\
-B -> = Expression #assign | [ Expression ] #arr_addr H | SimpleExpressionPrime\n\
-H -> = Expression #assign | G D C\n\
+ReturnStmtPrime ->  ; | Expression #save_retval ;\n\
+Expression -> SimpleExpressionZegond |  #pid ID B  \n\
+B -> = Expression #assign | [ Expression ]  H | SimpleExpressionPrime\n\
+H -> = Expression #assign  | G D C\n\
 SimpleExpressionZegond -> AdditiveExpressionZegond C\n\
 SimpleExpressionPrime -> AdditiveExpressionPrime C\n\
-C -> Relop AdditiveExpression #comp | EPSILON\n\
-Relop ->  #push_ss < | #push_ss ==\n\
+C -> Relop AdditiveExpression #comp  | EPSILON\n\
+Relop ->  #push_sss < | #push_ss ==\n\
 AdditiveExpression -> Term D\n\
 AdditiveExpressionPrime -> TermPrime D\n\
 AdditiveExpressionZegond -> TermZegond D\n\
-D -> Addop Term #add_sub D | EPSILON\n\
-Addop -> #push_ss + | #push_ss -\n\
+D -> Addop Term  D | EPSILON\n\
+Addop ->  + |  -\n\
 Term -> SignedFactor G\n\
 TermPrime -> SignedFactorPrime G\n\
 TermZegond -> SignedFactorZegond G\n\
-G -> * SignedFactor #mult G | EPSILON\n\
+G -> * SignedFactor  G | EPSILON\n\
 SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
-Factor -> ( Expression ) | #pid ID VarCallPrime | #push_num NUM\n\
-VarCallPrime -> #args_begin ( Args ) #end_args | VarPrime\n\
-VarPrime -> [ Expression ] #arr_addr | EPSILON\n\
+Factor -> ( Expression ) |  ID VarCallPrime | #push_num NUM\n\
+VarCallPrime ->  ( Args )  | VarPrime\n\
+VarPrime -> [ Expression ]  | EPSILON\n\
 FactorPrime -> ( Args ) | EPSILON\n\
 FactorZegond -> ( Expression ) | #push_num NUM\n\
 Args -> ArgList | EPSILON\n\
@@ -449,21 +449,10 @@ class Parser:
                 check_token = nextToken[0]
                 if check_token == "SYMBOL" or check_token == "KEYWORD": 
                     check_token = nextToken[1]
-
                 state = None
                 flag = 0
                 while not state in self.terminals:
                     flag = 0
-
-                    # action symbol states
-                    if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1:
-                        next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
-                        if next_state.startswith("#"):
-                            self.code_generator.code_gen(next_state[1:], nextToken[1])
-                            number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
-                            self.stateList.pop()
-                            self.stateList.append((self.current_state[0], number))   
-                            self.current_state = self.stateList[-1]
 
                     state, number = self.call(check_token, nextToken[1])
                     if state is None: # Panic mode NT mode 
@@ -565,6 +554,14 @@ class Parser:
  
 
     def call(self, input_token, actionSymbol_token=None):
+        if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1:
+            next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
+            if next_state.startswith("#"):
+                self.code_generator.code_gen(next_state[1:], actionSymbol_token)
+                number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
+                self.stateList.pop()
+                self.stateList.append((self.current_state[0], number))   
+                self.current_state = self.stateList[-1]
 
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
             next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
@@ -585,10 +582,11 @@ class Parser:
             elif key != "epsilon" and  (input_token in self.First_set[key] or
                                          (input_token in self.Follow_set[key] and 
                                                                                "EPSILON" in self.First_set[key])) :
-                if actionKey: self.code_generator.code_gen(actionKey)
+                if actionKey: self.code_generator.code_gen(actionKey, actionSymbol_token)
                 return key,  self.state_machine[self.current_state[0]][number].transitions[key]
             
             elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]]:
+                if actionKey: self.code_generator.code_gen(actionKey, actionSymbol_token)
                 return key,  self.state_machine[self.current_state[0]][number].transitions[key] 
           
           
@@ -670,14 +668,17 @@ class ActionSymbols(Enum):
 class CodeGenerator:
     def __init__(self):
         self.code = []
-        self.memory = Memory(ProgramBlock(0,1000), DataBlock(0, 10000), TempBlock(0, 10000))
+        self.memory = Memory(ProgramBlock(0,500), DataBlock(500, 10000), TempBlock(500, 10000))
         self.ss = []
         self.symbol_table = SymbolTable()
 
 
 
     def code_gen(self, a_symbol, token=None):
-        print(a_symbol)
+        if a_symbol == "push_sss":
+            a_symbol = "push_ss"
+        
+        # print(f"Action: {a_symbol}, stack: {self.ss}")
         action_symbol = ActionSymbols(a_symbol)
         match action_symbol: 
             case ActionSymbols.PUSH_SS:
@@ -727,7 +728,7 @@ class CodeGenerator:
             case ActionSymbols.ADD_SUB:
                 self.add_sub_subroutine(a_symbol)
             case ActionSymbols.PID:
-                self.pid_subroutine(a_symbol)
+                self.pid_subroutine(token)
             case ActionSymbols.ARGS_BEGIN:
                 self.args_begin_subroutine()
             case ActionSymbols.END_ARGS:
@@ -738,16 +739,74 @@ class CodeGenerator:
                 self.pop_ss_subroutine()
 
 
+    # @correct
     def push_ss_subroutine(self, token):
+        # print(token)
         self.ss.append(token)  # push token to stack
 
+    # @correct
     def declare_var_subroutine(self,):
         lexeme = self.ss.pop(-1)  # get variable name
         type = self.ss.pop(-1)  # get type of variable
-        self.memory.get_db().add_data(lexeme, type)  # add data to data block
+        self.memory.get_tb().get_temp()  # get a temp variable
+        self.memory.get_db().add_data(lexeme, type)
+        self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),''))  # add data to data block
         # todo 
 
+    # @correct
+    def save_subroutine(self,):
+        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        self.memory.get_pb().increment_index()  # increment pb index
+
+    # @correct
+    def jump_if_false_subroutine(self,):
+        idx = self.memory.get_pb().get_index()
+        address = self.ss.pop(-1)
+        istra = ["jpf", self.ss.pop(-1), idx + 1, None]  # jpf instruction
+        self.memory.get_pb().add_instruction(istra, address)  # add instruction to pb
+
+        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        self.memory.get_pb().increment_index()  # increment pb index
+
+    # @correct
+    def jump_subroutine(self):
+        idx = self.memory.get_pb().get_index()
+        instra = ["jp", idx, None, None]  # jp instruction
+        self.memory.get_pb().add_instruction(instra, self.ss.pop(-1))  # add instruction to pb
+
+    # @correct
+    def pid_subroutine(self, token):
+        p = self.memory.get_db().get_data(token)  # get data from data block
+        # print(f"PID: {token}, data: {p}")
+        self.ss.append(p)
+
+    # @correct
+    def push_num_subroutine(self, token):
+        # print(f"PUSH_NUM: {token}")
+        self.ss.append('#' + token)
+
+    # @correct
+    def compare_subroutine(self,):
+        t = self.memory.get_tb().get_temp()  # get a temp variable 
+        opr2 = self.ss.pop(-1)  # get second operand
+        op = self.ss.pop(-1) # get operator
+        opr1 = self.ss.pop(-1) # get first operand
+        if op == '<':
+            op = 'LT'
+        elif op == '==':
+            op = 'EQ'
+
+        instra = (op, opr1, opr2, t)
+        self.ss.append(t)
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+
+
+    def assign_subroutine(self,):
+        instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+
     def param_info_subroutine(self,):
+        return
         name = self.ss.pop()
         # update symbol table with parameter info
         pass
@@ -783,26 +842,6 @@ class CodeGenerator:
         self.ss.append(self.memory.get_pb().get_index()) # current line of pb
         self.memory.get_pb().increment_index()  # increment pb index
         # todo : > 1 break statement
-
-    def jump_if_false_subroutine(self,):
-        return
-        idx = self.memory.get_pb().get_index()
-        address = self.ss.pop(-1)
-        istra = ["jpf", self.ss.pop(-1), idx + 1, None]  # jpf instruction
-        self.memory.get_pb().add_instruction(istra, address)  # add instruction to pb
-
-        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
-        self.memory.get_pb().increment_index()  # increment pb index
-
-    def jump_subroutine(self):
-        return
-        idx = self.memory.get_pb().get_index()
-        instra = ["jp", idx, None, None]  # jp instruction
-        self.memory.get_pb().add_instruction(instra, self.ss.pop(-1))  # add instruction to pb
-
-    def save_subroutine(self,):
-        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
-        self.memory.get_pb().increment_index()  # increment pb index
 
     def while_label_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index())
@@ -840,10 +879,6 @@ class CodeGenerator:
         instra = ["PRINT", content, None, None]
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         
-    def assign_subroutine(self,):
-        return
-        instra = ["ASSIGN", self.ss.pop(-1), self.ss.pop(-1), None]  # assign instruction
-        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
 
 
 
@@ -869,19 +904,6 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(addInstra)  # add instruction
         self.ss.append('@' + str(t2))
 
-    def compare_subroutine(self,):
-        # it may not be correct at all
-        R = self.memory.get_tb().get_temp() # ???
-        op1 = self.ss.pop(-1)
-        operation =self.ss.pop(-1)
-        op2 = self.ss.pop(-1)
-        if operation == "<":
-            instruction = ["LT", op2, op1, R]
-            self.memory.get_tb().add_instruction(instruction)
-        elif operation == "==":
-            instruction = ["EQ", op2, op1, R]
-        self.ss.append(R)
-
 
     def multiply_subroutine(self,):
         # todo type matching for semantic analysis
@@ -902,10 +924,6 @@ class CodeGenerator:
         self.ss.append(R)
 
 
-    def pid_subroutine(self, token):
-        p = self.symbol_table.find_address(token)
-        self.ss.append(p)
-
 
     def args_begin_subroutine(self):
 
@@ -914,14 +932,18 @@ class CodeGenerator:
     def end_args_subroutine(self):
         pass
 
-    def push_num_subroutine(self, token):
-        self.ss.append('#' + token)
+
 
 
     def pop_ss_subroutine(self):
         self.ss.pop(-1)
 
-
+    def write_outputs(self):
+        with open(f'output.txt', 'w') as f:
+            sortInstructions = sorted(self.memory.get_pb().block.items())
+            for items in sortInstructions:
+                f.write(str(items[0]) + '\t' + str(items[1]) + '\n')
+      
 
 
 
@@ -1064,7 +1086,6 @@ class ProgramBlock:
 
 
     def add_instruction(self, instruction, address=None):
-        print("here")
         if address == None:
             self.block[self.index] = instruction
             self.increment_index()
@@ -1107,12 +1128,14 @@ class DataBlock:
     def add_data(self, lexeme, type, arr_size=1):
         for i in range(arr_size):
             data= DATA(lexeme, type, self.index)
-            self.block[self.base + self.index] = data  
+            self.block[lexeme] =   self.base + self.index
             self.index += 4 # assuming int size is 4 bytes; 
             if self.index > self.limit:
                 raise Exception("Data block limit exceeded")
-        # symbol table todo    
-
+        # symbol table todo  
+    def get_data(self, lexeme):
+        return self.block[lexeme]
+        
     def __repr__(self):
         return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
 
@@ -1133,7 +1156,7 @@ class TempBlock:
     def get_temp(self):
         idx = self.index
         self.index += 4
-        return idx
+        return idx + self.base
 
     def __repr__(self):
         return f"TempBlock(base={self.base}, limit={self.limit}, temp={self.temp})"
@@ -1141,6 +1164,6 @@ class TempBlock:
 parser = Parser("input.txt")
 parser.getTokens()
 parser.write_outputs()
-print(parser.code_generator.memory.get_pb().block)  # Print the program block instructions
+parser.code_generator.write_outputs()
 
-
+# print(parser.state_machine["Relop"])
