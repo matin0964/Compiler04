@@ -291,7 +291,7 @@ StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
 ExpressionStmt -> Expression ; | break  ; | ;\n\
 SelectionStmt -> if ( Expression ) #save  Statement #jpf_save else   Statement #jp \n\
-IterationStmt -> while #while_label ( Expression ) #save_while_jp Statement #end_while \n\
+IterationStmt -> while  ( Expression )  Statement  \n\
 ReturnStmt -> return ReturnStmtPrime\n\
 ReturnStmtPrime -> ; #return_j| Expression #save_retval ;\n\
 Expression -> SimpleExpressionZegond |  #pid ID B  \n\
@@ -304,16 +304,16 @@ Relop ->  #push_sss < | #push_ss ==\n\
 AdditiveExpression -> Term D\n\
 AdditiveExpressionPrime -> TermPrime D\n\
 AdditiveExpressionZegond -> TermZegond D\n\
-D -> #push_ss Addop Term #add_sub D | EPSILON\n\
-Addop ->  + |  -\n\
+D -> Addop Term #add_sub  D | EPSILON\n\
+Addop ->  #push_ss + | #push_ss -\n\
 Term -> SignedFactor G\n\
 TermPrime -> SignedFactorPrime G\n\
 TermZegond -> SignedFactorZegond G\n\
-G -> * #pid SignedFactor #mult G | EPSILON\n\
+G -> * SignedFactor  G | EPSILON\n\
 SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
-Factor -> ( Expression ) |  #pid ID VarCallPrime | #push_num NUM\n\
+Factor -> ( Expression ) | #pid ID VarCallPrime | #push_num NUM\n\
 VarCallPrime ->  ( #args_begin Args  ) #end_args | VarPrime\n\
 VarPrime -> [ Expression ] #arr_addr  | EPSILON\n\
 FactorPrime -> ( #args_begin Args ) #end_args| EPSILON\n\
@@ -660,7 +660,6 @@ class ActionSymbols(Enum):
     ARRAY_ADDRESS = "arr_addr"
     COMPARE = "comp"
     MULTIPLY = "mult"
-    # SAVE_OP = "save_op"
     ADD_SUB = "add_sub"
     PID = "pid"
     ARGS_BEGIN = "args_begin"
@@ -686,76 +685,75 @@ class CodeGenerator:
         if a_symbol == "push_sss":
             a_symbol = "push_ss"
         
-        # print(f"Action: {a_symbol}, stack: {self.ss}\n")
+        print(f"Action: {a_symbol}, stack: {self.ss}\n")
         action_symbol = ActionSymbols(a_symbol)
-        match action_symbol: 
-            case ActionSymbols.START_PROGRAM:
-                self.start_program_subroutine()
-            case ActionSymbols.PUSH_SS:
-                self.push_ss_subroutine(token)
-            case ActionSymbols.DECLARE_VAR:
-                self.declare_var_subroutine()
-            case ActionSymbols.DECLAARE_VAR_PARAM:
-                self.declare_var_subroutine(False)
-            case ActionSymbols.PARAM_INFO:
-                self.param_info_subroutine()
-            case ActionSymbols.DECLARE_FUNC:
-                self.declare_func_subroutine()
-            case ActionSymbols.DECLARE_POINTER:
-                self.declare_pointer_subroutine()
-            case ActionSymbols.DECLARE_ARRAY:
-                self.declare_array_subroutine()
-            case ActionSymbols.CLOSE_FUNC:
-                self.close_func_subroutine()
-            case ActionSymbols.SAVE_SCOPE:
-                self.save_scope_subroutine()
-            case ActionSymbols.BACK_SCOPE:
-                self.back_scope_subroutine()
-            case ActionSymbols.SAVE_BREAK:
-                self.save_break_subroutine()
-            case ActionSymbols.JUMP_IF_FALSE:
-                self.jump_if_false_subroutine()
-            case ActionSymbols.JUMP:
-                self.jump_subroutine()
-            case ActionSymbols.SAVE:
-                self.save_subroutine()
-            case ActionSymbols.WHILE_LABEL:
-                self.while_label_subroutine()
-            case ActionSymbols.SAVE_WHILE_JUMP:
-                self.save_while_jump_subroutine()
-            case ActionSymbols.END_WHILE:
-                self.end_while_subroutine()
-            case ActionSymbols.RETURN_JUMP:
-                self.return_jump_subroutine()
-            case ActionSymbols.SAVE_RETURNVALUE:
-                self.save_return_value_subroutine()
-            case ActionSymbols.PRINT:
-                self.print_subroutine()
-            case ActionSymbols.ASSIGN:
-                self.assign_subroutine()
-            case ActionSymbols.ARRAY_ADDRESS:
-                self.array_address_subroutine()
-            case ActionSymbols.COMPARE:
-                self.compare_subroutine()
-            case ActionSymbols.MULTIPLY:
-                self.multiply_subroutine()
-            case ActionSymbols.ADD_SUB:
-                self.add_sub_subroutine(a_symbol)
-            case ActionSymbols.PID:
-                self.pid_subroutine(token)
-            case ActionSymbols.ARGS_BEGIN:
-                self.args_begin_subroutine()
-            case ActionSymbols.END_ARGS:
-                self.end_args_subroutine()
-            case ActionSymbols.PUSH_NUM:
-                self.push_num_subroutine(token)
-            case ActionSymbols.POP_SS:
-                self.pop_ss_subroutine()
+        if action_symbol == ActionSymbols.START_PROGRAM:
+            self.start_program_subroutine()
+        elif action_symbol == ActionSymbols.PUSH_SS:
+            self.push_ss_subroutine(token)
+        elif action_symbol == ActionSymbols.DECLARE_VAR:
+            self.declare_var_subroutine()
+        elif action_symbol == ActionSymbols.DECLAARE_VAR_PARAM:
+            self.declare_var_subroutine(False)
+        elif action_symbol == ActionSymbols.PARAM_INFO:
+            self.param_info_subroutine()
+        elif action_symbol == ActionSymbols.DECLARE_FUNC:
+            self.declare_func_subroutine()
+        elif action_symbol == ActionSymbols.DECLARE_POINTER:
+            self.declare_pointer_subroutine()
+        elif action_symbol == ActionSymbols.DECLARE_ARRAY:
+            self.declare_array_subroutine()
+        elif action_symbol == ActionSymbols.CLOSE_FUNC:
+            self.close_func_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_SCOPE:
+            self.save_scope_subroutine()
+        elif action_symbol == ActionSymbols.BACK_SCOPE:
+            self.back_scope_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_BREAK:
+            self.save_break_subroutine()
+        elif action_symbol == ActionSymbols.JUMP_IF_FALSE:
+            self.jump_if_false_subroutine()
+        elif action_symbol == ActionSymbols.JUMP:
+            self.jump_subroutine()
+        elif action_symbol == ActionSymbols.SAVE:
+            self.save_subroutine()
+        elif action_symbol == ActionSymbols.WHILE_LABEL:
+            self.while_label_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_WHILE_JUMP:
+            self.save_while_jump_subroutine()
+        elif action_symbol == ActionSymbols.END_WHILE:
+            self.end_while_subroutine()
+        elif action_symbol == ActionSymbols.RETURN_JUMP:
+            self.return_jump_subroutine()
+        elif action_symbol == ActionSymbols.SAVE_RETURNVALUE:
+            self.save_return_value_subroutine()
+        elif action_symbol == ActionSymbols.PRINT:
+            self.print_subroutine()
+        elif action_symbol == ActionSymbols.ASSIGN:
+            self.assign_subroutine()
+        elif action_symbol == ActionSymbols.ARRAY_ADDRESS:
+            self.array_address_subroutine()
+        elif action_symbol == ActionSymbols.COMPARE:
+            self.compare_subroutine()
+        elif action_symbol == ActionSymbols.MULTIPLY:
+            self.multiply_subroutine()
+        elif action_symbol == ActionSymbols.ADD_SUB:
+            self.add_sub_subroutine(a_symbol)
+        elif action_symbol == ActionSymbols.PID:
+            self.pid_subroutine(token)
+        elif action_symbol == ActionSymbols.ARGS_BEGIN:
+            self.args_begin_subroutine()
+        elif action_symbol == ActionSymbols.END_ARGS:
+            self.end_args_subroutine()
+        elif action_symbol == ActionSymbols.PUSH_NUM:
+            self.push_num_subroutine(token)
+        elif action_symbol == ActionSymbols.POP_SS:
+            self.pop_ss_subroutine()
         # print(f"Stack after action: {self.ss}, and PB: {self.memory.get_pb().block}\n")
 
     # @correct
     def start_program_subroutine(self):
-        self.memory.get_db().get_temp()  # initialize temp variable
+         # initialize temp variable
         instra = ("ASSIGN", "#4", 0, None)
 
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
@@ -764,7 +762,6 @@ class CodeGenerator:
 
     # @correct
     def push_ss_subroutine(self, token):
-        print(f"Entered push_ss with token: {token}")
         # print(token)
         self.ss.append(token)  # push token to stack
 
@@ -775,7 +772,8 @@ class CodeGenerator:
         self.memory.get_db().add_data(lexeme, type)
         self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme) 
         if flag: self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),None))  # add data to data block
-        # todo 
+         
+
     # @correct
     def save_subroutine(self,):
         self.ss.append(self.memory.get_pb().get_index()) # current line of pb
@@ -785,7 +783,7 @@ class CodeGenerator:
     def jump_if_false_subroutine(self,):
         idx = self.memory.get_pb().get_index()
         address = self.ss.pop(-1)
-        istra = ["jpf", self.ss.pop(-1), idx + 1, None]  # jpf instruction
+        istra = ["JPF", self.ss.pop(-1), idx + 1, None]  # jpf instruction
         self.memory.get_pb().add_instruction(istra, address)  # add instruction to pb
 
         self.ss.append(self.memory.get_pb().get_index()) # current line of pb
@@ -794,7 +792,7 @@ class CodeGenerator:
     # @correct
     def jump_subroutine(self):
         idx = self.memory.get_pb().get_index()
-        instra = ["jp", idx, None, None]  # jp instruction
+        instra = ["JP", idx, None, None]  # jp instruction
         self.memory.get_pb().add_instruction(instra, self.ss.pop(-1))  # add instruction to pb
 
     # @correct
@@ -803,7 +801,10 @@ class CodeGenerator:
             self.ss.append('PRINT')
             return
         
-        p = self.current_scope[token]  # get data from data block
+        if token in self.current_scope.keys():  # check if token is in current scope
+            p = self.current_scope[token]
+        else: 
+            p = self.global_scope[token] # get data from data block
         # print(f"PID: {token}, data: {p}")
         self.ss.append(p)
 
@@ -833,9 +834,7 @@ class CodeGenerator:
         in2 = self.ss.pop(-1)  # get second operand
         instra = ["ASSIGN", in1, in2, None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        
-        #todo: check if it was needed or not (Matin thinks not)
-        # self.ss.append(in2)  # push second operand to stack
+        self.ss.append(in2)  # push second operand to stack
 
     # @correct
     def declare_array_subroutine(self,):
@@ -855,6 +854,7 @@ class CodeGenerator:
             return 
         else: 
             self.ss.append("ARGUMENTS")
+
 
     # @correct
     def end_args_subroutine(self):
@@ -876,10 +876,32 @@ class CodeGenerator:
             instra = ["PRINT", args[0], None, None]  # print instruction
             self.memory.get_pb().add_instruction(instra)  # add instruction to pb
             return
-        # todo of calling function 
+        else: 
+            func_name = next((x for x, v in self.global_scope.items() if v == self.ss[-1]), None)
+            self.ss.pop(-1)  # pop function name from stack
+            for idx, value in enumerate(args):
+                dst_fnc = self.all_scopes[func_name]["ARG_BASE"] + 4 * idx 
+                insra = ("ASSIGN", value, dst_fnc, None)
+                self.memory.get_pb().add_instruction(insra)  # add instruction to pb
 
+        ret_addr = self.memory.get_pb().get_index() + 2
+        instra = ("ASSIGN", f"#{ret_addr}", self.all_scopes[func_name]["RA"], None)
+        instra2 = ("JP",  self.all_scopes[func_name]["CALL_LINE"], None, None)  # jump instruction
+        
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+        self.memory.get_pb().add_instruction(instra2)  # add instruction to pb
+
+        if self.all_scopes[func_name]["TYPE"] != "void":
+            t = self.memory.get_db().get_temp()  # get a temp variable
+            instra3 = ("ASSIGN", self.all_scopes[func_name]["RET"], t, None)
+            self.memory.get_pb().add_instruction(instra3)  # add instruction to pb
+            self.ss.append(t)
+            
     # @correct
     def close_func_subroutine(self,):
+        if self.current_function != 'main':
+            instra = ("JP", '@' + str(self.current_scope["RA"]), None, None)  # jump instruction
+            self.memory.get_pb().add_instruction(instra)
         self.current_scope = self.all_scopes['global']  # reset current scope to global
         self.current_function = None  # reset current function
         # self.return_jump_subroutine()
@@ -889,6 +911,14 @@ class CodeGenerator:
         lexeme = self.ss.pop(-1)
         data_type = self.ss.pop(-1)  # get type of function
         self.current_scope = {}
+
+        base = self.memory.get_db().get_temp()  
+        self.current_scope["TYPE"] = data_type
+        self.current_scope["RA"] = base
+        self.current_scope["RET"] = base + 4
+        self.current_scope["ARG_BASE"] = base + 8   
+        self.current_scope["CALL_LINE"] = self.memory.get_pb().get_index() 
+        
         self.memory.get_db().add_data(lexeme, data_type, 1, True)  # add function to data block
         self.global_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add function to global scope
         self.current_function = lexeme
@@ -907,6 +937,7 @@ class CodeGenerator:
         # update symbol table with parameter info
         pass
     
+    # @correct
     def array_address_subroutine(self):
         t1 = self.memory.get_db().get_temp()
         off = self.ss.pop(-1)  # get offset
@@ -929,7 +960,7 @@ class CodeGenerator:
         self.ss.append('@' + str(t1))  # push address to stack
         # self.ss.append('@' + str(t2))
 
-
+    # @correct
     def declare_pointer_subroutine(self,):
         lexeme = self.ss.pop(-1)
         self.ss.pop(-1)
@@ -938,32 +969,33 @@ class CodeGenerator:
         # update symbol table with pointer info
         self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add data to current scope
 
-        pass
+    # @correct
+    def print_subroutine(self,):
+        if len(self.ss) > 0: content = self.ss.pop(-1)
+        content = 0; # todo
+        instra = ["PRINT", content, None, None]
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+        
+
     
-
+    # @correct
     def return_jump_subroutine(self):
-        t = self.memory.get_db().get_temp()
-        instra1 = ("ADD", self.ss.pop(-1), f'#{4}', t)  # add instruction
-        instra2 = ("ASSIGN", '@' + str(t), t, '')  # assign instruction
-        instra3 = ("JP", '@' + str(t), None, None)  # jump instruction
-      
-        self.memory.get_pb().add_instruction(instra1)
-        self.memory.get_pb().add_instruction(instra2)
-        self.memory.get_pb().add_instruction(instra3)
+        ra = self.current_scope["RA"] if self.current_scope else 500
+        instra = ("JP", f"@{ra}", None, None)
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
 
+       
+    # @correct
     def save_return_value_subroutine(self):
         ret_val = self.ss.pop(-1)
-        t = self.memory.get_db().get_temp()
-        instra = ("ASSIGN", '@' + str(self.ss.pop(-1)), t, '')  # assign instruction
-        instra2 = ["ASSIGN", ret_val, '@' + str(t), None]
-        self.memory.get_pb().add_instruction(instra)
-        self.memory.get_pb().add_instruction(instra2)  # add instruction to pb
-        
-        self.return_jump_subroutine()  # return jump instruction
-
-
+        # print(f"Return value: {ret_val}")
+        instra = ("ASSIGN", ret_val, self.current_scope["RET"], None)  # assign instruction
+        bagh = self.current_scope["RA"]
+        instr2 = ("JP", f"@{bagh}", None, None)
+        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
+        self.memory.get_pb().add_instruction(instr2)  # add instruction to pb   
     
-    
+
     def save_scope_subroutine(self,):
         pass
     
@@ -976,36 +1008,20 @@ class CodeGenerator:
         # todo : > 1 break statement
 
     def while_label_subroutine(self,):
-        print(f'address: {self.memory.get_pb().get_index()}')
         self.ss.append(self.memory.get_pb().get_index())
 
     def save_while_jump_subroutine(self,):
-        print(f'address: {self.memory.get_pb().get_index()}')
         self.ss.append(self.memory.get_pb().get_index())
         self.memory.get_pb().increment_index()
 
 
     def end_while_subroutine(self,):
-        print(self.ss)
-
         idx = self.memory.get_pb().get_index()
         addr = int(self.ss.pop(-1))
-        print(f'addr {addr}')
         instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
         instruction2 = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction1, addr)
         self.memory.get_pb().add_instruction(instruction2)
-
-
-   
-    def print_subroutine(self,):
-        if len(self.ss) > 0: content = self.ss.pop(-1)
-        content = 0; # todo
-        instra = ["PRINT", content, None, None]
-        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        
-
-
 
     
 
@@ -1015,24 +1031,17 @@ class CodeGenerator:
         instra = ["MULT",self.ss.pop(-1), self.ss.pop(-1), t]  # multiply instruction]
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.ss.append(t)  # push temp to stack
-        print(f'stack: {self.ss}')
+        
 
     def add_sub_subroutine(self, action):
-        op2 = self.ss.pop(-1)
-        operation = self.ss.pop(-1)
         op1 = self.ss.pop(-1)
-        # print(operation, op2, op1)
+        operation = self.ss.pop(-1)
+        op2 = self.ss.pop(-1)
         R = self.memory.get_db().get_temp()
         op = "ADD" if operation == '+' else "SUB"
-        instruction = [op, op1, op2, R]
+        instruction = [op, op2, op1, R]
         self.memory.get_pb().add_instruction(instruction)
         self.ss.append(R)
-
-
-
-   
-
-
 
 
     def pop_ss_subroutine(self):
@@ -1216,7 +1225,6 @@ class DataBlock:
         self.block = {}
 
     def add_data(self, lexeme, type, arr_size=1, isFunction=False):
-        # print(self.index)
         for i in range(arr_size):
             data = DATA(lexeme, type, self.index, isFunction)
             if arr_size == 1 or i == 0: self.block[lexeme] =   self.base + self.index
@@ -1242,4 +1250,5 @@ parser.getTokens()
 # parser.write_outputs()
 parser.code_generator.write_outputs()
 
-# print(parser.state_machine["Relop"])
+# print(parser.code_generator.all_scopes['global'])
+# print(parser.code_generator.memory.get_pb().block)
