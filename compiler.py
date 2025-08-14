@@ -4,125 +4,127 @@
 
 from enum import Enum
 
+
 class Scanner:
     def __init__(self, filename):
         self.KEYWORDS = {"if", "else", "void", "int", "while", "break", "return"}
         self.SYMBOLS = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '<'}
-        self.WHITESPACE = {' ','\t','\r','\v','\f'}
-        self.filename  = filename 
+        self.WHITESPACE = {' ', '\t', '\r', '\v', '\f'}
+        self.filename = filename
         self.tokens = []
         self.errors = []
         self.symbolTable = set()
         self.symbolTable.update(self.KEYWORDS)
         self.lineno = 1
-        self.initialize_DFA() 
+        self.initialize_DFA()
 
         with open(filename, encoding='utf-8') as f:
             self.inputProgram = f.read()
 
-
     def initialize_DFA(self):
         self.TRANSITIONS = {
-        ('START', 'LETTER'): 'ID',
-        ('START', 'DIGIT'): 'NUM',
-        ('START', '='): 'ASSIGN_OR_EQ',
-        ('START', 'SYMBOL' ): 'SYMBOL',  
-        ('START', '/' ): 'SYMBOL/',    
-        ('START', '*' ): 'SYMBOL*',    
-        ('SYMBOL*', 'OTHER'): 'INV_IN',  
-        ('SYMBOL/', 'OTHER'): 'INV_IN',  
-        ('START', 'OTHER'): 'INV_IN',
-        ('ASSIGN_OR_EQ', '='): 'EQ',
-        ('ASSIGN_OR_EQ', 'OTHER'): 'INV_IN',
-        ('ID', 'LETTER'): 'ID',
-        ('ID', 'DIGIT'): 'ID',
-        ('ID', 'OTHER'): 'INV_IN',
-        ('NUM', 'OTHER'): 'INV_IN',
-        ('NUM', 'DIGIT'): 'NUM',
-        ('NUM', 'OTHER'): 'INV_NUM',
-        ('NUM', 'LETTER'): 'INV_NUM',
+            ('START', 'LETTER'): 'ID',
+            ('START', 'DIGIT'): 'NUM',
+            ('START', '='): 'ASSIGN_OR_EQ',
+            ('START', 'SYMBOL'): 'SYMBOL',
+            ('START', '/'): 'SYMBOL/',
+            ('START', '*'): 'SYMBOL*',
+            ('SYMBOL*', 'OTHER'): 'INV_IN',
+            ('SYMBOL/', 'OTHER'): 'INV_IN',
+            ('START', 'OTHER'): 'INV_IN',
+            ('ASSIGN_OR_EQ', '='): 'EQ',
+            ('ASSIGN_OR_EQ', 'OTHER'): 'INV_IN',
+            ('ID', 'LETTER'): 'ID',
+            ('ID', 'DIGIT'): 'ID',
+            ('ID', 'OTHER'): 'INV_IN',
+            ('NUM', 'OTHER'): 'INV_IN',
+            ('NUM', 'DIGIT'): 'NUM',
+            ('NUM', 'OTHER'): 'INV_NUM',
+            ('NUM', 'LETTER'): 'INV_NUM',
         }
-        
+
         self.FINAL_STATES = {
-        'ID': 'ID',
-        'NUM': 'NUM',
-        'EQ': 'SYMBOL',
-        'ASSIGN_OR_EQ': 'SYMBOL',
-        'SYMBOL': 'SYMBOL',
-        'INV_IN': 'INV_IN',
-        'INV_NUM': 'INV_NUM',
-        'SYMBOL*': 'SYMBOL',
-        'SYMBOL/': 'SYMBOL',
+            'ID': 'ID',
+            'NUM': 'NUM',
+            'EQ': 'SYMBOL',
+            'ASSIGN_OR_EQ': 'SYMBOL',
+            'SYMBOL': 'SYMBOL',
+            'INV_IN': 'INV_IN',
+            'INV_NUM': 'INV_NUM',
+            'SYMBOL*': 'SYMBOL',
+            'SYMBOL/': 'SYMBOL',
 
-    }
-
+        }
 
     def char_classification(self, ch):
-        if ch.isalpha(): return 'LETTER'
-        elif ch.isdigit(): return 'DIGIT'
-        elif ch in self.SYMBOLS: return 'SYMBOL'  # Use char itself for symbols
-        elif ch in self.WHITESPACE: return 'WHITESPACE'
-        elif ch in '=/*': return ch 
-        elif ch == '\n': 'NEWLINE'
-        else: return 'OTHER'
-
-
-
-     
+        if ch.isalpha():
+            return 'LETTER'
+        elif ch.isdigit():
+            return 'DIGIT'
+        elif ch in self.SYMBOLS:
+            return 'SYMBOL'  # Use char itself for symbols
+        elif ch in self.WHITESPACE:
+            return 'WHITESPACE'
+        elif ch in '=/*':
+            return ch
+        elif ch == '\n':
+            'NEWLINE'
+        else:
+            return 'OTHER'
 
     def get_next_token(self, location):
         while location < len(self.inputProgram) and self.inputProgram[location] in self.WHITESPACE:
             location += 1
 
-        if location >= len(self.inputProgram): 
+        if location >= len(self.inputProgram):
             return ("$", "$"), location
-        
 
-        # read first char 
+        # read first char
         ch = self.inputProgram[location]
 
-        if ch == '\n': 
+        if ch == '\n':
             self.lineno += 1
             return None, location + 1
 
         state = 'START'
         lexeme = ''
-   
+
         while location < len(self.inputProgram):
-          
-        
+
             # comment handeling
-            if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '/' and self.inputProgram[location + 1] == '*':
+            if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '/' and self.inputProgram[
+                location + 1] == '*':
                 lineNumber = self.lineno
                 comment = ''
                 if lexeme != '': break
                 reserveLineno = self.lineno
-                while(True):
-                    if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
+                while (True):
+                    if (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and \
+                            self.inputProgram[location + 1] == '/':
                         break
                     else:
-                        if location + 1 == len(self.inputProgram): 
-                            if len(comment) > 7:  
+                        if location + 1 == len(self.inputProgram):
+                            if len(comment) > 7:
                                 comment = f'{comment[:7]}...'
-                            self.errors.append((lineNumber,  comment, 'Unclosed comment'))
+                            self.errors.append((lineNumber, comment, 'Unclosed comment'))
                             return None, location + 1
                     comment += self.inputProgram[location]
-                    if (self.inputProgram[location] == '\n'): 
+                    if (self.inputProgram[location] == '\n'):
                         self.lineno += 1
                     location += 1
                 location += 2
                 break
 
-            elif (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[location + 1] == '/':
+            elif (location + 1) < len(self.inputProgram) and self.inputProgram[location] == '*' and self.inputProgram[
+                location + 1] == '/':
                 self.errors.append((self.lineno, '*/', 'Unmatched comment'))
                 location += 2
                 break
 
-
             cls = self.char_classification(self.inputProgram[location])
 
             if cls == 'NEWLINE':
-            #    location += 1
+                #    location += 1
                 break
             nextState = self.TRANSITIONS.get((state, cls))
             if nextState is None:
@@ -136,46 +138,41 @@ class Scanner:
             if lexeme in self.KEYWORDS:
                 tokenType = 'KEYWORD'
             if tokenType == 'ID':
-                 if lexeme not in self.symbolTable:
+                if lexeme not in self.symbolTable:
                     self.symbolTable.add(lexeme)
 
-            if (tokenType == 'INV_IN'): 
+            if (tokenType == 'INV_IN'):
                 self.errors.append((self.lineno, lexeme, 'Invalid input'))
-                return None, location 
-            
+                return None, location
+
             if (tokenType == 'INV_NUM'):
                 self.errors.append((self.lineno, lexeme, 'Invalid number'))
-                return None, location 
-            
+                return None, location
+
             return (tokenType, lexeme), location
         else:
-            return None, location 
+            return None, location
 
-
-     
-    def scanning(self): 
+    def scanning(self):
         currentIndex = 0
-        while(currentIndex < len(self.inputProgram)):
-            # while(currentIndex <  len(self.inputProgram)): 
-                nextToken, endToken = self.get_next_token(currentIndex)
-                if nextToken: 
-                    self.tokens.append((self.lineno, nextToken))
-                currentIndex = endToken
-    
-        
-  
-    def generateOutputs(self): 
-        with open('tokens.txt', 'w', encoding='utf-8') as f:          
+        while (currentIndex < len(self.inputProgram)):
+            # while(currentIndex <  len(self.inputProgram)):
+            nextToken, endToken = self.get_next_token(currentIndex)
+            if nextToken:
+                self.tokens.append((self.lineno, nextToken))
+            currentIndex = endToken
+
+    def generateOutputs(self):
+        with open('tokens.txt', 'w', encoding='utf-8') as f:
             token_dict = {}
             for lineno, tokenPair in self.tokens:
                 if lineno not in token_dict:
-                        token_dict[lineno] = []
+                    token_dict[lineno] = []
                 token_dict[lineno].append(tokenPair)
-                 
+
             for lineno in sorted(token_dict.keys()):
                 token_line = f"{lineno}.\t" + ' '.join((f"({type}, {value})" for type, value in token_dict[lineno]))
                 f.write(token_line + '\n')
-
 
         with open('lexical_errors.txt', 'w', encoding='utf-8') as f:
             if not self.errors:
@@ -186,7 +183,7 @@ class Scanner:
                     if lineno not in error_dict:
                         error_dict[lineno] = []
                     error_dict[lineno].append(f"({errorCode}, {errorType})")
-            
+
                 for lineno in sorted(error_dict.keys()):
                     error_line = f"{lineno}.\t" + ' '.join(error_dict[lineno])
                     f.write(error_line + '\n')
@@ -194,7 +191,6 @@ class Scanner:
         with open('symbol_table.txt', 'w', encoding='utf-8') as f:
             for no, lexeme in enumerate(self.symbolTable, 1):
                 f.write(f"{no}.\t{lexeme}\n")
-
 
 
 class State:
@@ -207,7 +203,7 @@ class State:
         self.transitions[symbol] = next_state
 
     def __repr__(self):
-        trans = {k : v for k, v in self.transitions.items()}
+        trans = {k: v for k, v in self.transitions.items()}
         return f"State({self.non_terminal}, {self.number}): {trans}"
 
 
@@ -272,8 +268,6 @@ def build_state_machines_from_string(grammar_str: str) -> dict:
     return state_machines
 
 
-
-
 grammar_string = "Program -> #start_program DeclarationList $\n\
 DeclarationList -> Declaration DeclarationList | EPSILON\n\
 Declaration -> DeclarationInitial DeclarationPrime\n\
@@ -289,7 +283,7 @@ ParamPrime -> [ ] #dec_pnt | EPSILON #dec_varParam \n\
 CompoundStmt -> {  DeclarationList StatementList  }\n\
 StatementList -> Statement StatementList | EPSILON\n\
 Statement -> ExpressionStmt | CompoundStmt | SelectionStmt | IterationStmt | ReturnStmt\n\
-ExpressionStmt -> Expression ; | break #save_b ; | ;\n\
+ExpressionStmt -> Expression ; | break #save_b  ; | ;\n\
 SelectionStmt -> if ( Expression ) #save  Statement #jpf_save else   Statement #jp \n\
 IterationStmt -> while #while_label ( Expression ) #save_while_jp Statement #end_while \n\
 ReturnStmt -> return ReturnStmtPrime\n\
@@ -304,16 +298,16 @@ Relop ->  #push_sss < | #push_ss ==\n\
 AdditiveExpression -> Term D\n\
 AdditiveExpressionPrime -> TermPrime D\n\
 AdditiveExpressionZegond -> TermZegond D\n\
-D -> #push_ss Addop Term #add_sub D | EPSILON\n\
-Addop ->  + |  -\n\
+D -> Addop Term #add_sub  D | EPSILON\n\
+Addop ->  #push_ss + | #push_ss -\n\
 Term -> SignedFactor G\n\
 TermPrime -> SignedFactorPrime G\n\
 TermZegond -> SignedFactorZegond G\n\
-G -> * #pid SignedFactor #mult G | EPSILON\n\
+G -> * SignedFactor #mult G | EPSILON\n\
 SignedFactor -> + Factor | - Factor | Factor\n\
 SignedFactorPrime -> FactorPrime\n\
 SignedFactorZegond -> + Factor | - Factor | FactorZegond\n\
-Factor -> ( Expression ) |  #pid ID VarCallPrime | #push_num NUM\n\
+Factor -> ( Expression ) | #pid ID VarCallPrime | #push_num NUM\n\
 VarCallPrime ->  ( #args_begin Args  ) #end_args | VarPrime\n\
 VarPrime -> [ Expression ] #arr_addr  | EPSILON\n\
 FactorPrime -> ( #args_begin Args ) #end_args| EPSILON\n\
@@ -323,81 +317,84 @@ ArgList -> Expression ArgListPrime\n\
 ArgListPrime -> , Expression ArgListPrime | EPSILON"
 
 
-
-
 class Parser:
     def __init__(self, filename):
         self.state_machine = build_state_machines_from_string(grammar_string)
-        self.filename  = filename
-        self.scanner  = Scanner(filename)
-        self.code_generator = CodeGenerator() # todo,
+        self.filename = filename
+        self.scanner = Scanner(filename)
+        self.code_generator = CodeGenerator(self)  # todo,
         self.parse_tree = []
         self.syntax_erros = []
         self.tree_depth = -1
-        self.First_set  = {
-        "Program": ["int", "void", "EPSILON"],
-        "DeclarationList": ["int", "void", "EPSILON"],
-        "Declaration": ["int", "void"],
-        "DeclarationInitial": ["int", "void"],
-        "DeclarationPrime": [";", "[", "(",],
-        "VarDeclarationPrime": [";", "["],
-        "FunDeclarationPrime": ["("],
-        "TypeSpecifier": ["int", "void"],
-        "Params": ["int", "void"],
-        "ParamList": [",", "EPSILON"],
-        "Param": ["int", "void"],
-        "ParamPrime": ["[", "EPSILON"],
-        "CompoundStmt": ["{"],
-        "StatementList": ["ID", ";", "NUM", "(", "{", "break", "if", "while", "return", "+", "-", "EPSILON"],
-        "Statement": ["ID", ";", "NUM", "(", "{", "break", "if", "while", "return", "+", "-"],
-        "ExpressionStmt": ["ID", ";", "NUM", "(", "break", "+", "-"],
-        "SelectionStmt": ["if"],
-        "IterationStmt": ["while"],
-        "ReturnStmt": ["return"],
-        "ReturnStmtPrime": ["ID", ";", "NUM", "(", "+", "-"],
-        "Expression": ["ID", "NUM", "(", "+", "-"],
-        "B": ["[", "(", "==" ,"=", "+", "-", "<", "*", "EPSILON"],
-        "H": ["=", "*", "+", "-", "<", "==", "EPSILON"],
-        "SimpleExpressionZegond": ["NUM", "(", "+", "-"],
-        "SimpleExpressionPrime": ["(", "+", "-", "<", "==", "EPSILON", "*"],
-        "C": ["<", "==", "EPSILON"],
-        "Relop": ["<", "=="],
-        "AdditiveExpression": ["ID", "NUM", "(", "+", "-"],
-        "AdditiveExpressionPrime": ["(", "+", "-", "*", "EPSILON"],
-        "AdditiveExpressionZegond": ["NUM", "(", "+", "-"],
-        "D": ["+", "-", "EPSILON"],
-        "Addop": ["+", "-"],
-        "Term": ["ID", "NUM", "(", "+", "-"],
-        "TermPrime": ["(", "*", "EPSILON"],
-        "TermZegond": ["NUM", "(", "+", "-"],
-        "G": ["*", "EPSILON"],
-        "SignedFactor": ["ID", "NUM", "(", "+", "-"],
-        "SignedFactorPrime": ["(", "EPSILON"],
-        "SignedFactorZegond": ["NUM", "(", "+", "-"],
-        "Factor": ["ID", "NUM", "("],
-        "VarCallPrime": ["(", "[", "EPSILON"],
-        "VarPrime": ["[", "EPSILON"],
-        "FactorPrime": ["(", "EPSILON"],
-        "FactorZegond": ["NUM", "("],
-        "Args": ["ID", "NUM", "(", "+", "-", "EPSILON"],
-        "ArgList": ["ID", "NUM", "(", "+", "-"],
-        "ArgListPrime": [",", "EPSILON"]
+        self.First_set = {
+            "Program": ["int", "void", "EPSILON"],
+            "DeclarationList": ["int", "void", "EPSILON"],
+            "Declaration": ["int", "void"],
+            "DeclarationInitial": ["int", "void"],
+            "DeclarationPrime": [";", "[", "(", ],
+            "VarDeclarationPrime": [";", "["],
+            "FunDeclarationPrime": ["("],
+            "TypeSpecifier": ["int", "void"],
+            "Params": ["int", "void"],
+            "ParamList": [",", "EPSILON"],
+            "Param": ["int", "void"],
+            "ParamPrime": ["[", "EPSILON"],
+            "CompoundStmt": ["{"],
+            "StatementList": ["ID", ";", "NUM", "(", "{", "break", "if", "while", "return", "+", "-", "EPSILON"],
+            "Statement": ["ID", ";", "NUM", "(", "{", "break", "if", "while", "return", "+", "-"],
+            "ExpressionStmt": ["ID", ";", "NUM", "(", "break", "+", "-"],
+            "SelectionStmt": ["if"],
+            "IterationStmt": ["while"],
+            "ReturnStmt": ["return"],
+            "ReturnStmtPrime": ["ID", ";", "NUM", "(", "+", "-"],
+            "Expression": ["ID", "NUM", "(", "+", "-"],
+            "B": ["[", "(", "==", "=", "+", "-", "<", "*", "EPSILON"],
+            "H": ["=", "*", "+", "-", "<", "==", "EPSILON"],
+            "SimpleExpressionZegond": ["NUM", "(", "+", "-"],
+            "SimpleExpressionPrime": ["(", "+", "-", "<", "==", "EPSILON", "*"],
+            "C": ["<", "==", "EPSILON"],
+            "Relop": ["<", "=="],
+            "AdditiveExpression": ["ID", "NUM", "(", "+", "-"],
+            "AdditiveExpressionPrime": ["(", "+", "-", "*", "EPSILON"],
+            "AdditiveExpressionZegond": ["NUM", "(", "+", "-"],
+            "D": ["+", "-", "EPSILON"],
+            "Addop": ["+", "-"],
+            "Term": ["ID", "NUM", "(", "+", "-"],
+            "TermPrime": ["(", "*", "EPSILON"],
+            "TermZegond": ["NUM", "(", "+", "-"],
+            "G": ["*", "EPSILON"],
+            "SignedFactor": ["ID", "NUM", "(", "+", "-"],
+            "SignedFactorPrime": ["(", "EPSILON"],
+            "SignedFactorZegond": ["NUM", "(", "+", "-"],
+            "Factor": ["ID", "NUM", "("],
+            "VarCallPrime": ["(", "[", "EPSILON"],
+            "VarPrime": ["[", "EPSILON"],
+            "FactorPrime": ["(", "EPSILON"],
+            "FactorZegond": ["NUM", "("],
+            "Args": ["ID", "NUM", "(", "+", "-", "EPSILON"],
+            "ArgList": ["ID", "NUM", "(", "+", "-"],
+            "ArgListPrime": [",", "EPSILON"]
         }
 
         self.Follow_set = {
             "Program": ["$"],
             "DeclarationList": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "$"],
-            "Declaration": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int", "void","$"],
-            "DeclarationInitial": ["[", "(", ")" , ",", ";"],
-            "DeclarationPrime": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int", "void", "$"],
-            "VarDeclarationPrime": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int", "void", "$"],
-            "FunDeclarationPrime": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int", "void", "$"],
+            "Declaration": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int", "void",
+                            "$"],
+            "DeclarationInitial": ["[", "(", ")", ",", ";"],
+            "DeclarationPrime": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int",
+                                 "void", "$"],
+            "VarDeclarationPrime": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int",
+                                    "void", "$"],
+            "FunDeclarationPrime": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "while", "return", "+", "-", "int",
+                                    "void", "$"],
             "TypeSpecifier": ["ID"],
             "Params": [")"],
             "ParamList": [")"],
             "Param": [")", ","],
             "ParamPrime": [")", ","],
-            "CompoundStmt": ["ID", ";", "NUM", "(", "}", "{", "int", "void", "break", "if", "else", "while", "return", "+", "-", "$"],
+            "CompoundStmt": ["ID", ";", "NUM", "(", "}", "{", "int", "void", "break", "if", "else", "while", "return",
+                             "+", "-", "$"],
             "StatementList": ["}"],
             "Statement": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "else", "while", "return", "+", "-"],
             "ExpressionStmt": ["ID", ";", "NUM", "(", "}", "{", "break", "if", "else", "while", "return", "+", "-"],
@@ -435,19 +432,18 @@ class Parser:
         }
         self.terminals = self.scanner.KEYWORDS.union(self.scanner.SYMBOLS, {"NUM", "ID", "=", "==", "*", "$"})
         self.current_state = ("Program", 0)
-        self.stateList = [self.current_state] # stack for tokens of Input
+        self.stateList = [self.current_state]  # stack for tokens of Input
         self.parse_tree.append("Program")
         self.depthSit = [False] * 1000
-        
 
-    def getTokens(self): 
+    def getTokens(self):
         currentIndex = 0
         nextToken = (None, None)
-        while(self.stateList):   
+        while (self.stateList):
             nextToken, endToken = self.scanner.get_next_token(currentIndex)
-            if nextToken:  
+            if nextToken:
                 check_token = nextToken[0]
-                if check_token == "SYMBOL" or check_token == "KEYWORD": 
+                if check_token == "SYMBOL" or check_token == "KEYWORD":
                     check_token = nextToken[1]
                 state = None
                 flag = 0
@@ -455,81 +451,85 @@ class Parser:
                     flag = 0
 
                     state, number = self.call(check_token, nextToken[1])
-                    if state is None: # Panic mode NT mode 
+                    if state is None:  # Panic mode NT mode
                         flag = self.recover(check_token)
-                        if flag == 1: break  
-                        elif flag == 2: continue
-                        elif flag == 3: break
-                    
+                        if flag == 1:
+                            break
+                        elif flag == 2:
+                            continue
+                        elif flag == 3:
+                            break
+
                     else:
                         if state in self.terminals:
-                            break       
+                            break
 
                         self.stateList.pop()
-                        self.stateList.append((self.current_state[0], number))   
+                        self.stateList.append((self.current_state[0], number))
 
-                                       
-
-                        self.tree_depth += 1 
+                        self.tree_depth += 1
                         self.add_tree_node(state)
 
                         if state != "epsilon":
                             self.stateList.append((state, 0))
-                                
-                        else: 
-                            self.tree_depth -= 1 
+
+                        else:
+                            self.tree_depth -= 1
 
                         self.balanceStateList()
                         self.current_state = self.stateList[-1]
-                        
+
                 if flag == 1:
                     currentIndex = endToken
-                    continue  
+                    continue
                 elif flag == 3:
                     break
 
                 # terminal mode
-                if self.match(state, check_token): 
+                if self.match(state, check_token):
                     self.stateList.pop()
-                    self.stateList.append((self.current_state[0], number)) 
+                    self.stateList.append((self.current_state[0], number))
                     self.tree_depth += 1
                     self.add_tree_node(nextToken)
                     self.tree_depth -= 1
                     self.balanceStateList()
 
-                else: # Panic mode case 3
-                    next_link = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
-                    self.stateList.pop()  
-                    self.stateList.append((self.current_state[0], 
-                            self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_link]))
+                else:  # Panic mode case 3
+                    next_link = \
+                    list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys())[0]
+                    self.stateList.pop()
+                    self.stateList.append((self.current_state[0],
+                                           self.state_machine[self.current_state[0]][self.current_state[1]].transitions[
+                                               next_link]))
 
                     self.balanceStateList()
-                    if(state == '$'):
+                    if (state == '$'):
                         self.parse_tree.append('$')
 
                     else:
                         self.syntax_erros.append(f'#{self.scanner.lineno} : syntax error, missing {state}')
-                    if(self.stateList): self.current_state = self.stateList[-1]
+                    if (self.stateList): self.current_state = self.stateList[-1]
                     continue
 
+                if (self.stateList): self.current_state = self.stateList[-1]
 
-                if(self.stateList): self.current_state = self.stateList[-1]
-
-            else: nextToken = (None, None)
+            else:
+                nextToken = (None, None)
             currentIndex = endToken
-                
 
-    def match(self, token, state): 
-        if token == state: return True
-        else: return False
-    
+    def match(self, token, state):
+        if token == state:
+            return True
+        else:
+            return False
+
     def recover(self, token):
         state = self.current_state[0]
-         # flags:  0 1 -> break 2 -> continue
+        # flags:  0 1 -> break 2 -> continue
         if not token in self.Follow_set[state] and token != '$':
-     
+
             self.stateList.pop()
-            self.stateList.append((self.current_state[0],0))
+            self.stateList.append((self.current_state[0], 0))
             self.current_state = self.stateList[-1]
             self.syntax_erros.append(f'#{self.scanner.lineno} : syntax error, illegal {token}')
             return 1
@@ -544,14 +544,12 @@ class Parser:
         elif token == '$':
             self.parse_tree.pop()
             l = self.scanner.lineno + 1
-            if(self.scanner.inputProgram[-1] == '\n'): 
+            if (self.scanner.inputProgram[-1] == '\n'):
                 l = l - 1
             self.syntax_erros.append(f'#{l} : syntax error, Unexpected EOF')
             return 3
 
-        
         return 0
- 
 
     def call(self, input_token, actionSymbol_token=None):
         if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1:
@@ -560,14 +558,14 @@ class Parser:
                 self.code_generator.code_gen(next_state[1:], actionSymbol_token)
                 number = self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
                 self.stateList.pop()
-                self.stateList.append((self.current_state[0], number))   
+                self.stateList.append((self.current_state[0], number))
                 self.current_state = self.stateList[-1]
 
-        if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1: 
+        if len(self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys()) == 1:
             next_state = list(self.state_machine[self.current_state[0]][self.current_state[1]].transitions)[0]
             return next_state, self.state_machine[self.current_state[0]][self.current_state[1]].transitions[next_state]
-        
-        for key  in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys(): 
+
+        for key in self.state_machine[self.current_state[0]][self.current_state[1]].transitions.keys():
             number = self.current_state[1]
             actionKey = None
             if key.startswith("#"):
@@ -576,66 +574,63 @@ class Parser:
                 key = list(self.state_machine[self.current_state[0]][number].transitions)[0]
 
             if key in self.terminals:
-                if input_token == key: 
+                if input_token == key:
                     if actionKey: self.code_generator.code_gen(actionKey, actionSymbol_token)
-                    return key,  self.state_machine[self.current_state[0]][number].transitions[key]
-            elif key != "epsilon" and  (input_token in self.First_set[key] or
-                                         (input_token in self.Follow_set[key] and 
-                                                                               "EPSILON" in self.First_set[key])) :
+                    return key, self.state_machine[self.current_state[0]][number].transitions[key]
+            elif key != "epsilon" and (input_token in self.First_set[key] or
+                                       (input_token in self.Follow_set[key] and
+                                        "EPSILON" in self.First_set[key])):
                 if actionKey: self.code_generator.code_gen(actionKey, actionSymbol_token)
-                return key,  self.state_machine[self.current_state[0]][number].transitions[key]
-            
+                return key, self.state_machine[self.current_state[0]][number].transitions[key]
+
             elif key == "epsilon" and input_token in self.Follow_set[self.current_state[0]]:
                 if actionKey: self.code_generator.code_gen(actionKey, actionSymbol_token)
-                return key,  self.state_machine[self.current_state[0]][number].transitions[key] 
-          
-          
+                return key, self.state_machine[self.current_state[0]][number].transitions[key]
+
         return None, None
-    
 
     def add_tree_node(self, node):
         if isinstance(node, tuple) and len(node) == 2:
-            if  node[0] == '$': 
+            if node[0] == '$':
                 node = "$"
-            else: 
-                node = "(" + node[0] + ', ' + node[1] +  ") "
-        
+            else:
+                node = "(" + node[0] + ', ' + node[1] + ") "
+
         charParent = None
         self.depthSit[self.tree_depth] = False
 
         if self.stateList[-1][1] == 1:
             charParent = '└── '
             self.depthSit[self.tree_depth] = True
-        else :
-            charParent =  '├── '
+        else:
+            charParent = '├── '
 
-        prefix = ''.join( ('│   ' if self.depthSit[i] == False else '    ') for i in range(0, self.tree_depth))
+        prefix = ''.join(('│   ' if self.depthSit[i] == False else '    ') for i in range(0, self.tree_depth))
 
         self.parse_tree.append(f"{prefix}{charParent}{node}")
 
-
-    def balanceStateList(self): 
+    def balanceStateList(self):
         if not self.stateList:
             return
-        while(self.stateList[-1][1] == 1): # final state of diagram
-                self.stateList.pop()
-                self.tree_depth -= 1
+        while (self.stateList[-1][1] == 1):  # final state of diagram
+            self.stateList.pop()
+            self.tree_depth -= 1
 
-                if len(self.stateList) == 0: return 
+            if len(self.stateList) == 0: return
 
     def write_outputs(self):
         with open(f'parse_tree.txt', 'w') as f:
             for line in self.parse_tree:
                 f.write(line + '\n')
-        with open(f'syntax_errors.txt', 'w') as f: 
-            if (len(self.syntax_erros) == 0): 
+        with open(f'syntax_errors.txt', 'w') as f:
+            if (len(self.syntax_erros) == 0):
                 f.write("There is no syntax error.")
             else:
-                for line in self.syntax_erros: 
+                for line in self.syntax_erros:
                     f.write(line + '\n')
 
 
-class ActionSymbols(Enum): 
+class ActionSymbols(Enum):
     PUSH_SS = "push_ss"
     PARAM_INFO = "param_det"
     CLOSE_FUNC = "cls_func"
@@ -646,7 +641,7 @@ class ActionSymbols(Enum):
     DECLARE_ARRAY = "dec_arr"
     SAVE_SCOPE = "save_scope"
     BACK_SCOPE = "back_scope"
-    SAVE_BREAK = "save_b" 
+    SAVE_BREAK = "save_b"
     JUMP_IF_FALSE = "jpf_save"
     JUMP = "jp"
     SAVE = "save"
@@ -668,10 +663,12 @@ class ActionSymbols(Enum):
     START_PROGRAM = "start_program"
     POP_SS = "pop_ss"
 
+
 class CodeGenerator:
-    def __init__(self):
+    def __init__(self, parser):
+        self.parser = parser
         self.code = []
-        self.memory = Memory(ProgramBlock(0,500), DataBlock(500, 10000))
+        self.memory = Memory(ProgramBlock(0, 500), DataBlock(500, 10000))
         self.ss = []
         self.symbol_table = SymbolTable()
         self.global_scope = {}
@@ -679,16 +676,27 @@ class CodeGenerator:
         self.current_function = None  # current function being processed
         self.all_scopes = {'global': self.global_scope}  # dictionary of scopes
         self.loops = []
-
         self.add_break = True
-
+        self.isAssign = False
+        self.arrayNecAddress = 0
+        self.arrayFlag = False
+        self.semanticErrors = {}
 
     def code_gen(self, a_symbol, token=None):
         if a_symbol == "push_sss":
             a_symbol = "push_ss"
-        
-        print(f"Action: {a_symbol}, stack: {self.ss}\n")
+
         action_symbol = ActionSymbols(a_symbol)
+        if (action_symbol == ActionSymbols.ASSIGN): 
+            self.isAssign = True
+        elif self.isAssign:
+            self.isAssign = False
+            self.arrayNecAddress = self.ss.pop(-1)
+            if len(self.ss) > 0 and self.ss[-1] == "PRINT": self.ss.append(self.arrayNecAddress)
+            self.arrayFlag = True
+        
+        # print(f"Action: {a_symbol}, stack: {self.ss}\n")
+
         if action_symbol == ActionSymbols.START_PROGRAM:
             self.start_program_subroutine()
         elif action_symbol == ActionSymbols.PUSH_SS:
@@ -755,7 +763,7 @@ class CodeGenerator:
 
     # @correct
     def start_program_subroutine(self):
-         # initialize temp variable
+        # initialize temp variable
         instra = ("ASSIGN", "#4", 0, None)
 
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
@@ -771,17 +779,27 @@ class CodeGenerator:
     def declare_var_subroutine(self, flag=True):
         lexeme = self.ss.pop(-1)  # get variable name
         type = self.ss.pop(-1)  # get type of variable
+        if (type == 'void'): 
+            self.semanticErrors[int(self.parser.scanner.lineno) - 1] = \
+                "Semantic Error! Illegal type of void for '" + lexeme + "'"
         self.memory.get_db().add_data(lexeme, type)
-        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme) 
-        if flag: self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),None))  # add data to data block
-        # todo 
-    # @correct
-    def save_subroutine(self,):
-        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
-        self.memory.get_pb().increment_index()  # increment pb index
+        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme)
+        if not flag:
+            self.memory.get_db().get_dataClass(lexeme).isParams = True
+
+        if flag: self.memory.get_pb().add_instruction(
+            ("ASSIGN", '#0', self.memory.get_db().get_data(lexeme), None))  # add data to data block
+        else:
+            self.current_scope["PARAMETER"] += 1
+
 
     # @correct
-    def jump_if_false_subroutine(self,):
+    def save_subroutine(self, ):
+        self.ss.append(self.memory.get_pb().get_index()) # current line of pb
+        self.memory.get_pb().increment_index()  # increment pb indexex
+
+    # @correct
+    def jump_if_false_subroutine(self, ):
         idx = self.memory.get_pb().get_index()
         address = self.ss.pop(-1)
         istra = ["JPF", self.ss.pop(-1), idx + 1, None]  # jpf instruction
@@ -795,19 +813,23 @@ class CodeGenerator:
         idx = self.memory.get_pb().get_index()
         instra = ["JP", idx, None, None]  # jp instruction
         self.memory.get_pb().add_instruction(instra, self.ss.pop(-1))  # add instruction to pb
-
     # @correct
     def pid_subroutine(self, token):
         if token == 'output':
             self.ss.append('PRINT')
             return
-        
-        if token in self.current_scope.keys():  # check if token is in current scope
-            p = self.current_scope[token]
-        else:
-            p = self.global_scope[token] # get data from data block
-        # print(f"PID: {token}, data: {p}")
-        self.ss.append(p)
+        try: 
+            if token in self.current_scope.keys():  # check if token is in current scope
+                p = self.current_scope[token]
+            else:
+                p = self.global_scope[token]  # get data from data block
+            self.ss.append(p)
+        except Exception as e:
+            self.semanticErrors[int(self.parser.scanner.lineno)] = \
+                 "Semantic Error! '" \
+                + token + \
+                "' is not defined."
+            self.ss.append(0)
 
     # @correct
     def push_num_subroutine(self, token):
@@ -815,11 +837,11 @@ class CodeGenerator:
         self.ss.append('#' + token)
 
     # @correct
-    def compare_subroutine(self,):
-        t = self.memory.get_db().get_temp()  # get a temp variable 
+    def compare_subroutine(self, ):
+        t = self.memory.get_db().get_temp()  # get a temp variable
         opr2 = self.ss.pop(-1)  # get second operand
-        op = self.ss.pop(-1) # get operator
-        opr1 = self.ss.pop(-1) # get first operand
+        op = self.ss.pop(-1)  # get operator
+        opr1 = self.ss.pop(-1)  # get first operand
         if op == '<':
             op = 'LT'
         elif op == '==':
@@ -830,43 +852,47 @@ class CodeGenerator:
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
 
     # @correct
-    def assign_subroutine(self,):
+    def assign_subroutine(self, ):
         in1 = self.ss.pop(-1)  # get first operand
         in2 = self.ss.pop(-1)  # get second operand
+
+        ty1, ty2, res = self.typeMatch_checker(in1, in2)
+        if not res:
+            self.semanticErrors[int(self.parser.scanner.lineno)] = \
+                f"Semantic Error! Type mismatch in operands, Got {ty2} instead of {ty1}." 
+            
         instra = ["ASSIGN", in1, in2, None]  # assign instruction
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.ss.append(in2)  # push second operand to stack
 
     # @correct
-    def declare_array_subroutine(self,):
+    def declare_array_subroutine(self, ):
         size = self.ss.pop(-1)  # get variable name
         lexeme = self.ss.pop(-1)  # get type of variable
         type = self.ss.pop(-1)  # get type of variable
-        self.memory.get_db().add_data(lexeme, type, int(size))  # add data to data block
-        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme) 
-        self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme),None)) 
-        # todo 
+        self.memory.get_db().add_data(lexeme, 'array', int(size))  # add data to data block
+        self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme)
+        self.memory.get_pb().add_instruction(("ASSIGN", '#0', self.memory.get_db().get_data(lexeme), None))
+        # todo
         pass
-
 
     # @correct
     def args_begin_subroutine(self):
         if self.ss and self.ss[-1] == 'PRINT':
-            return 
-        else: 
+            return
+        else:
             self.ss.append("ARGUMENTS")
-
 
     # @correct
     def end_args_subroutine(self):
         args = []
-        if 'ARGUMENTS' in self.ss: 
+        if 'ARGUMENTS' in self.ss:
             while self.ss[-1] != 'ARGUMENTS':
                 arg = self.ss.pop(-1)  # pop arguments from stack
                 args.append(arg)
 
         elif 'PRINT' in self.ss:
-             while self.ss[-1] != 'PRINT':
+            while self.ss[-1] != 'PRINT':
                 arg = self.ss.pop(-1)  # pop arguments from stack
                 args.append(arg)
 
@@ -874,20 +900,44 @@ class CodeGenerator:
         argType = self.ss.pop(-1)  # pop 'ARGUMENTS' or 'PRINT' from stack
 
         if argType == 'PRINT':
-            instra = ["PRINT", args[0], None, None]  # print instruction
+            printDec = None
+            if True:
+                printDec = args[0]
+            else:
+                printDec = self.arrayNecAddress
+            instra = ["PRINT", printDec, None, None]  # print instruction
             self.memory.get_pb().add_instruction(instra)  # add instruction to pb
             return
         else:
             func_name = next((x for x, v in self.global_scope.items() if v == self.ss[-1]), None)
+            if self.all_scopes[func_name]["PARAMETER"] != len(args): 
+                self.semanticErrors[int(self.parser.scanner.lineno)] = "Semantic Error! Mismatch in numbers of arguments of \'"+ str(func_name) + "\'."
             self.ss.pop(-1)  # pop function name from stack
             for idx, value in enumerate(args):
                 dst_fnc = self.all_scopes[func_name]["ARG_BASE"] + 4 * idx
-                insra = ("ASSIGN", value, dst_fnc, None)
+
+                value_name = next((x for x, v in self.current_scope.items() if v == value and x != 'ARG_BASE'), None)
+                
+                dst_param = next((x for x, v in self.all_scopes[func_name].items() if v == dst_fnc and x != 'ARG_BASE'), None)
+                
+                if dst_param and value_name:
+                    val_type = self.memory.get_db().get_dataClass(value_name).type 
+                    param_type = self.memory.get_db().get_dataClass(dst_param).type 
+                
+                    if val_type != param_type: 
+                        self.semanticErrors[self.parser.scanner.lineno] = "Semantic Error! Mismatch in type of argument 1 of " + f"\'{func_name}\'" + ". Expected \'" + str(param_type) +"\' but got \'" + str(val_type) +"\' instead."
+                
+                dataTemplate = self.memory.get_db().get_dataClass(value_name)
+                
+                if dataTemplate and dataTemplate.type == 'array':
+                    insra = ("ASSIGN", '#' + str(value), dst_fnc, None)
+                else:
+                    insra = ("ASSIGN", value, dst_fnc, None)
                 self.memory.get_pb().add_instruction(insra)  # add instruction to pb
 
         ret_addr = self.memory.get_pb().get_index() + 2
         instra = ("ASSIGN", f"#{ret_addr}", self.all_scopes[func_name]["RA"], None)
-        instra2 = ("JP",  self.all_scopes[func_name]["CALL_LINE"], None, None)  # jump instruction
+        instra2 = ("JP", self.all_scopes[func_name]["CALL_LINE"], None, None)  # jump instruction
 
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.memory.get_pb().add_instruction(instra2)  # add instruction to pb
@@ -899,7 +949,7 @@ class CodeGenerator:
             self.ss.append(t)
 
     # @correct
-    def close_func_subroutine(self,):
+    def close_func_subroutine(self, ):
         if self.current_function != 'main':
             instra = ("JP", '@' + str(self.current_scope["RA"]), None, None)  # jump instruction
             self.memory.get_pb().add_instruction(instra)
@@ -908,7 +958,7 @@ class CodeGenerator:
         # self.return_jump_subroutine()
 
     # @correct
-    def declare_func_subroutine(self,):
+    def declare_func_subroutine(self, ):
         lexeme = self.ss.pop(-1)
         data_type = self.ss.pop(-1)  # get type of function
         self.current_scope = {}
@@ -919,39 +969,51 @@ class CodeGenerator:
         self.current_scope["RET"] = base + 4
         self.current_scope["ARG_BASE"] = base + 8
         self.current_scope["CALL_LINE"] = self.memory.get_pb().get_index()
+        self.current_scope["PARAMETER"] = 0
 
         self.memory.get_db().add_data(lexeme, data_type, 1, True)  # add function to data block
         self.global_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add function to global scope
         self.current_function = lexeme
         self.all_scopes[lexeme] = self.current_scope  # add function to all scopes
-        
+
         if lexeme == 'main':
-            self.memory.get_pb().block[1] = ("JP",  self.memory.get_pb().get_index(), None, None)  # set main function address
+            self.memory.get_pb().block[1] = ("JP", self.memory.get_pb().get_index(), None,
+                                             None)  # set main function address
             # todo: main function special case
 
         self.ss.append(lexeme)  # push function name to stack
 
     # @correct
-    def param_info_subroutine(self,):
+    def param_info_subroutine(self, ):
         name = self.ss.pop(-1)
         # semantic analysis for parameter
         # update symbol table with parameter info
         pass
-    
+
     # @correct
     def array_address_subroutine(self):
+        print("Here we are:", self.ss, len(self.ss))
         t1 = self.memory.get_db().get_temp()
-        off = self.ss.pop(-1)  # get offset
-        base = self.ss[-1]  # get base address
+        off = None
+        if not self.arrayFlag or len(self.ss) > 1: 
+            print("we are here", self.arrayNecAddress)
+            off = self.ss.pop(-1)  # get offset
+        else: 
+            off = self.arrayNecAddress
 
-        instra = ('MULT', off,  '#4', t1) # int as 4
+        base = self.ss[-1]  # get base address
+        instra = ('MULT', off, '#4', t1)  # int as 4
         self.memory.get_pb().add_instruction(instra)  # multiply instruction
 
-        addInstra = None
-        if str(base).startswith('@'):
-            t3 = self.memory.get_db().get_temp()
-            self.memory.get_pb().add_instruction(instra)  # assign instruction
+        indirectMode = False
+        base_name = next((x for x, v in self.current_scope.items() if v == base and x != 'ARG_BASE'), None)
 
+        dataTemplate = self.memory.get_db().get_dataClass(base_name)
+        if dataTemplate and dataTemplate.isParams:
+            indirectMode = True
+
+        addInstra = None
+        if indirectMode:
             addInstra = ('ADD', base, t1, t1)
         else:
             addInstra = ('ADD', '#' + str(base), t1, t1)
@@ -962,22 +1024,22 @@ class CodeGenerator:
         # self.ss.append('@' + str(t2))
 
     # @correct
-    def declare_pointer_subroutine(self,):
+    def declare_pointer_subroutine(self, ):
         lexeme = self.ss.pop(-1)
         self.ss.pop(-1)
         # semantic analysis for pointer
         self.memory.get_db().add_data(lexeme, 'array')
+        self.memory.get_db().get_dataClass(lexeme).isParams = True
         # update symbol table with pointer info
         self.current_scope[lexeme] = self.memory.get_db().get_data(lexeme)  # add data to current scope
 
+        self.current_scope["PARAMETER"] += 1
     # @correct
-    def print_subroutine(self,):
+    def print_subroutine(self, ):
         if len(self.ss) > 0: content = self.ss.pop(-1)
-        content = 0; # todo
+        content = 0;  # todo
         instra = ["PRINT", content, None, None]
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-
-
 
     # @correct
     def return_jump_subroutine(self):
@@ -985,50 +1047,48 @@ class CodeGenerator:
         instra = ("JP", f"@{ra}", None, None)
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
 
-
     # @correct
     def save_return_value_subroutine(self):
         ret_val = self.ss.pop(-1)
         # print(f"Return value: {ret_val}")
         instra = ("ASSIGN", ret_val, self.current_scope["RET"], None)  # assign instruction
-        bagh = self.current_scope["RA"]
-        instr2 = ("JP", f"@{bagh}", None, None)
+        ret_address = self.current_scope["RA"]
+        instr2 = ("JP", f"@{ret_address}", None, None)
+        # instr2 = ("JP", f"@{self.current_scope["RA"]}", None, None)
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        self.memory.get_pb().add_instruction(instr2)  # add instruction to pb
+        self.memory.get_pb().add_instruction(instr2)  # add instruction to pb  
 
-
-    def save_scope_subroutine(self,):
-        pass
-    
-    def back_scope_subroutine(self,):
+    def save_scope_subroutine(self, ):
         pass
 
-    def save_break_subroutine(self,):
+    def back_scope_subroutine(self, ):
+        pass
+
+    def save_break_subroutine(self, ):
         idx = self.memory.get_pb().get_index()
         self.memory.get_pb().increment_index()  # increment pb index
         if self.add_break:
-            self.loops[-1]["breaks"].append(idx)
-        # todo : > 1 break statement
+            try:
+                self.loops[-1]["breaks"].append(idx)
+            except: 
+                self.semanticErrors[self.parser.scanner.lineno] = "Semantic Error! No 'while' found for 'break'."
 
-    def while_label_subroutine(self,):
-        print(f'address: {self.memory.get_pb().get_index()}')
+
+    def while_label_subroutine(self, ):
         idx = self.memory.get_pb().get_index()
         if self.add_break:
             self.loops.append({"start_addr": idx, "breaks": []})
         self.ss.append('While')
         self.ss.append(idx)
 
-    def save_while_jump_subroutine(self,):
-        print(f'address: {self.memory.get_pb().get_index()}')
+    def save_while_jump_subroutine(self, ):
         self.ss.append(self.memory.get_pb().get_index())
         self.memory.get_pb().increment_index()
 
-
-    def end_while_subroutine(self,):
-        print(self.ss)
+    def end_while_subroutine(self, ):
         addr = self.memory.get_pb().get_index()
         if self.add_break:
-            print(f"Breaks: {self.loops[-1]['breaks']}")
+            # print(f"Breaks: {self.loops[-1]['breaks']}")
             for b in self.loops[-1]['breaks']:
                 instruction = ['JP', addr + 1, None, None]
                 self.memory.get_pb().add_instruction(instruction, b)
@@ -1036,141 +1096,91 @@ class CodeGenerator:
             self.loops.pop(-1)
         idx = self.memory.get_pb().get_index()
 
-        while(self.ss[-4] != 'While'):
+        while (self.ss[-4] != 'While'):
             self.ss.pop(-1)
 
-
         addr = int(self.ss.pop(-1))
-        print(f'addr {addr}')
         instruction1 = ["JPF", self.ss.pop(-1), idx + 1, None]
         instruction2 = ["JP", self.ss.pop(-1), None, None]
         self.memory.get_pb().add_instruction(instruction1, addr)
         self.memory.get_pb().add_instruction(instruction2)
 
         self.ss.pop(-1)
-   
-    def print_subroutine(self,):
-        if len(self.ss) > 0: content = self.ss.pop(-1)
-        content = 0; # todo
-        instra = ["PRINT", content, None, None]
-        self.memory.get_pb().add_instruction(instra)  # add instruction to pb
-        
 
-
-
-    
-
-    def multiply_subroutine(self,):
+    def multiply_subroutine(self, ):
         # todo type matching for semantic analysis
         t = self.memory.get_db().get_temp()  # get temp
-        instra = ["MULT",self.ss.pop(-1), self.ss.pop(-1), t]  # multiply instruction]
+        instra = ["MULT", self.ss.pop(-1), self.ss.pop(-1), t]  # multiply instruction]
         self.memory.get_pb().add_instruction(instra)  # add instruction to pb
         self.ss.append(t)  # push temp to stack
-        print(f'stack: {self.ss}')
 
     def add_sub_subroutine(self, action):
-        op2 = self.ss.pop(-1)
-        operation = self.ss.pop(-1)
         op1 = self.ss.pop(-1)
-        # print(operation, op2, op1)
+        operation = self.ss.pop(-1)
+        op2 = self.ss.pop(-1)
         R = self.memory.get_db().get_temp()
         op = "ADD" if operation == '+' else "SUB"
-        instruction = [op, op1, op2, R]
+        instruction = [op, op2, op1, R]
         self.memory.get_pb().add_instruction(instruction)
         self.ss.append(R)
-
 
     def pop_ss_subroutine(self):
         self.ss.pop(-1)
 
+    def typeMatch_checker(self, op1, op2):
+        type1 = 'int'
+        type2 = 'int'
+        try:
+            address = int(op1)
+            lexeme1 = next((x for x, v in self.current_scope.items() if v == address and x != 'ARG_BASE'), None)
+            if not lexeme1:
+                lexeme1 = next((x for x, v in self.global_scope.items() if v == address), None)
+            type1 = self.memory.get_db().get_dataClass(lexeme1).type
+        except:
+            type1 = 'int'
+        try:
+            address = int(op2)
+            lexeme2 = next((x for x, v in self.current_scope.items() if v == address and x != 'ARG_BASE'), None)
+            if not lexeme2:
+                lexeme2 = next((x for x, v in self.global_scope.items() if v == address), None)
+            type2 = self.memory.get_db().get_dataClass(lexeme2).type
+        except:
+            type2 = 'int'
+        
+        return type1, type2, type1 == type2
+        
     def write_outputs(self):
         sortInstructions = {}
         with open(f'output.txt', 'w') as f:
-            for num, quad in self.memory.get_pb().block.items():
-                formatted = [" " if x is None else x for x in quad]
-                sortInstructions[num] =  "(" + ", ".join(map(str, formatted)) + " )"
+            if not self.semanticErrors:
+                for num, quad in self.memory.get_pb().block.items():
+                    formatted = [" " if x is None else x for x in quad]
+                    sortInstructions[int(num)] = "(" + ", ".join(map(str, formatted)) + " )"
 
-            sortInstructions = sorted(sortInstructions.items())
-            lines = [str(items[0]) + '\t' + str(items[1]) for items in sortInstructions]
-            f.write("\n".join(lines))
-      
+                sortInstructions = sorted(sortInstructions.items())
+                lines = [str(items[0]) + '\t' + str(items[1])  for items in sortInstructions]
+                f.write("\n".join(lines))
+            else: 
+                f.write("The code has not been generated.")
+        with open(f'semantic_errors.txt', 'w') as f: 
+            if not self.semanticErrors: 
+                f.write("There is no semantic error")
+            else: 
+                lines = [f"#{key} : {self.semanticErrors[key]}" for key in self.semanticErrors]
+                f.write("\n".join(lines))
+
+                
 
 
-
-
-
-# Namjoo's code:
-# class Symbol:
-#     def __init__(self, address=None, lexeme=None, symbol_type=None, size=0, param_count=0):
-#         self.address = address
-#         self.lexeme = lexeme
-#         self.symbol_type = symbol_type
-#         self.size = size
-#         self.param_count = param_count
-#         self.param_symbols = []
-#         self.is_initialized = False
-#         self.is_function = False
-#         self.is_array = False
-#
-#
-# class SymbolTable:
-#     def __init__(self, codegen: "CodeGen"):
-#         self.scopes = [[]]
-#         self.codegen = codegen
-#
-#     def find_address(self, lexeme, check_declaration=False, force_declaration=False):
-#         return self.find_symbol(lexeme, check_declaration, force_declaration).address
-#
-#     def find_symbol(self, lexeme, check_declaration=False, force_declaration=False, prevent_add=False):
-#         address = -1
-#         result_symbol = None
-#         if not force_declaration:
-#             for scope in reversed(self.scopes):
-#                 for symbol in scope:
-#                     if symbol.lexeme == lexeme:
-#                         address = symbol.address
-#                         result_symbol = symbol
-#                         break
-#                 if result_symbol:
-#                     break
-#         if address == -1 and not prevent_add:
-#             if check_declaration:
-#                 raise SemanticException(SCOPE_SEMANTIC_ERROR.format(lexeme))
-#             address = self.codegen.get_next_data_address()
-#             result_symbol = self.add_symbol(lexeme=lexeme, address=address)
-#         return result_symbol
-#
-#     def find_symbol_by_address(self, address):
-#         result_symbol = None
-#         for scope in self.scopes[::-1]:
-#             for symbol in scope:
-#                 if symbol.address == address:
-#                     result_symbol = symbol
-#                     break
-#         return result_symbol
-#
-#     def add_symbol(self, lexeme, address):
-#         symbol = Symbol(lexeme=lexeme, address=address)
-#         self.scopes[-1].append(symbol)
-#         return symbol
-#
-#     def remove_symbol(self, lexeme):
-#         i = 0
-#         is_found = False
-#         for symbol in self.scopes[-1]:
-#             if symbol.lexeme == lexeme:
-#                 is_found = True
-#                 break
-#             i += 1
-#         if is_found:
-#             self.scopes[-1].pop(i)
 
 class Symbol:
-    def __init__(self, address = None, lexeme = None,):
+    def __init__(self, address=None, lexeme=None, ):
         self.address = address
         self.lexeme = lexeme
+
+
 class SymbolTable:
-    def __init__(self,):
+    def __init__(self, ):
         self.scopes = [[]]
 
     def find_symbol(self, lexeme):
@@ -1182,7 +1192,7 @@ class SymbolTable:
                     return address
         return None
 
-    def find_address(self, token): # todo
+    def find_address(self, token):  # todo
         return self.find_symbol(token)
 
     def find_symbol_by_address(self, address):
@@ -1191,6 +1201,7 @@ class SymbolTable:
                 if symbol.address == address:
                     return symbol
         return None
+
     def add_symbol(self, address, lexeme):
         symbol = Symbol(address, lexeme)
         self.scopes[-1].append(symbol)
@@ -1199,6 +1210,7 @@ class SymbolTable:
     # def remove_symbol(self, lexeme):
     #   pass
 
+
 class Memory:
     def __init__(self, program_block, data_block):
         self.pb = program_block
@@ -1206,10 +1218,9 @@ class Memory:
 
     def get_pb(self):
         return self.pb
-    
+
     def get_db(self):
         return self.db
-    
 
 
 class ProgramBlock:
@@ -1219,7 +1230,6 @@ class ProgramBlock:
         self.limit = limit
         self.block = {}
 
-
     def add_instruction(self, instruction, address=None):
         if address == None:
             self.block[self.index] = instruction
@@ -1227,12 +1237,11 @@ class ProgramBlock:
         else:
             self.block[address] = instruction
 
-         # todo
-
+        # todo
 
     def get_index(self):
         return self.index
-    
+
     def increment_index(self, num=1):
         if self.index + num < self.limit:
             self.index += num
@@ -1243,15 +1252,16 @@ class ProgramBlock:
         return f"ProgramBlock(base={self.base}, limit={self.limit}, index={self.index})"
 
 
-class DATA: 
+class DATA:
     def __init__(self, lexeme, type, address, isFunction=False):
         self.lexeme = lexeme
         self.type = type
         self.address = address
         self.isFunction = isFunction
+        self.isParams = False
         if type == 'int' or type == 'array':
             self.size = 4
-        
+
 
 class DataBlock:
     def __init__(self, base, limit, isFunction=False):
@@ -1259,24 +1269,34 @@ class DataBlock:
         self.base = base
         self.limit = limit
         self.block = {}
+        self.dataList = {}
 
     def add_data(self, lexeme, type, arr_size=1, isFunction=False):
         for i in range(arr_size):
             data = DATA(lexeme, type, self.index, isFunction)
-            if arr_size == 1 or i == 0: self.block[lexeme] =   self.base + self.index
-            self.index += 4 # assuming int size is 4 bytes; 
+            if arr_size == 1 or i == 0:
+                self.block[lexeme] = self.base + self.index
+                self.dataList[lexeme] = data
+            self.index += 4  # assuming int size is 4 bytes;
 
             if self.index > self.limit:
                 raise Exception("Data block limit exceeded")
-        # symbol table todo  
+        # symbol table todo
+
     def get_data(self, lexeme):
         return self.block[lexeme]
-        
+
+    def get_dataClass(self, lexeme):
+        if self.dataList.get(lexeme):
+            return self.dataList[lexeme]
+        else:
+            return None
+
     def get_temp(self):
         idx = self.index
         self.index += 4
         return idx + self.base
-    
+
     def __repr__(self):
         return f"DataBlock(base={self.base}, limit={self.limit}, data={self.data})"
 
@@ -1286,5 +1306,9 @@ parser.getTokens()
 # parser.write_outputs()
 parser.code_generator.write_outputs()
 
-# print(parser.code_generator.all_scopes['global'])
+# print(parser.code_generator.all_scopes['main'])
+# print(parser.code_generator.memory.get_db().get_dataClass('arr').type)
+# print(parser.code_generator.memory.get_db().dataList.keys())
 # print(parser.code_generator.memory.get_pb().block)
+print(parser.code_generator.semanticErrors)
+# print(parser.code_generator.all_scopes['f'])
